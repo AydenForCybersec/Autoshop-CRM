@@ -1,0 +1,13 @@
+[Unit]
+Description=AutoShop CRM
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/Autoshop-CRM
+EnvironmentFile=/root/Autoshop-CRM/.env
+ExecStart=/usr/bin/gunicorn -w 3 -b 0.0.0.0:5000 run:app
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

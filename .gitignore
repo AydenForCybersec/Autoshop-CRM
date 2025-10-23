@@ -1,25 +1,10 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Environments
 .env
-.venv/
-env/
-venv/
-
-# Logs
-*.log
-
-# IDE stuff
-.vscode/
-.idea/
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Flask instance folder
 instance/
+*.pyc
+__pycache__/
+venv/
+.env.local
+*.log
+uploads/
+node_modules/
+.DS_Store

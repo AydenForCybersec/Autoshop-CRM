@@ -1,3 +1,12 @@
-flask
-mysql-connector-python
+Flask>=2.2
+Flask-Login
+Flask-Migrate
+Flask-WTF
 python-dotenv
+mysql-connector-python
+SQLAlchemy
+alembic
+Werkzeug
+Flask-SQLAlchemy
+
+
