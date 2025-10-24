@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4" style="max-width: 600px;">
+  <h3 class="mb-3">Add New Job</h3>
+  <form method="POST">
+    <div class="mb-3">
+      <label for="customer_name" class="form-label">Customer Name</label>
+      <input type="text" name="customer_name" id="customer_name" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="phone" class="form-label">Phone</label>
+      <input type="text" name="phone" id="phone" class="form-control">
+    </div>
+    <div class="mb-3">
+      <label for="vehicle_make" class="form-label">Vehicle Make</label>
+      <input type="text" name="vehicle_make" id="vehicle_make" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="vehicle_model" class="form-label">Vehicle Model</label>
+      <input type="text" name="vehicle_model" id="vehicle_model" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="plate" class="form-label">License Plate</label>
+      <input type="text" name="plate" id="plate" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label for="description" class="form-label">Job Description</label>
+      <textarea name="description" id="description" class="form-control" rows="3"></textarea>
+    </div>
+    <div class="mb-3">
+      <label for="total" class="form-label">Total ($)</label>
+      <input type="number" name="total" id="total" class="form-control" step="0.01">
+    </div>
+    <button class="btn btn-primary">Add Job</button>
+  </form>
+</div>
+{% endblock %}
+

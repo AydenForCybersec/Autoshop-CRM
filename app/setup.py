@@ -1,79 +1,87 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
-from .models import Setting
-from .database import db
-import os
-from flask import current_app
-from app.models import User
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+import mysql.connector
 
-setup_bp = Blueprint("setup", __name__, template_folder="templates")
+setup_bp = Blueprint("setup", __name__, url_prefix="/setup")
+
+def get_conn():
+    """Open a new MySQL connection using app config"""
+    return mysql.connector.connect(
+        host=current_app.config["DB_HOST"],
+        user=current_app.config["DB_USER"],
+        password=current_app.config["DB_PASSWORD"],
+        database=current_app.config["DB_NAME"],
+    )
+
 
 def needs_setup():
-    s = Setting.query.first()
-    return not s or not s.setup_complete
+    """Check if setup_complete flag exists and is true."""
+    try:
+        conn = get_conn()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT setup_complete FROM settings LIMIT 1;")
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return not (row and row.get("setup_complete"))
+    except Exception:
+        return True
+
 
 @setup_bp.before_app_request
 def redirect_if_unset():
-    # allow static files, setup routes and login routes through
-    if request.endpoint and request.endpoint.startswith(("setup.", "auth.")):
-        return
-    # if setup not complete, redirect to setup page
-    if needs_setup():
+    """Redirect to setup page if the system isn’t initialized yet."""
+    from flask import request
+    if not request.path.startswith("/setup") and needs_setup():
         return redirect(url_for("setup.setup"))
+    return None
 
-@setup_bp.route("/setup", methods=["GET", "POST"])
+
+@setup_bp.route("/", methods=["GET", "POST"])
 def setup():
-    s = Setting.query.first()
+    """Render setup page or process setup form submission."""
     if request.method == "POST":
         shop_name = request.form.get("shop_name")
         shop_phone = request.form.get("shop_phone")
         shop_email = request.form.get("shop_email")
         shop_address = request.form.get("shop_address")
 
-        admin_username = request.form.get("admin_username", "").strip().lower()
-        admin_password = request.form.get("admin_password")
-        admin_confirm_password = request.form.get("admin_confirm_password")
+        conn = get_conn()
+        cursor = conn.cursor(dictionary=True)
 
-        if admin_password != admin_confirm_password:
-            flash("Passwords do not match. Please try again.", "danger")
-            return render_template("setup.html", settings=s)
+        cursor.execute("SELECT id FROM settings LIMIT 1;")
+        existing = cursor.fetchone()
 
-        # handle logo upload
-        logo = request.files.get("shop_logo")
-        logo_filename = None
-        if logo:
-            upload_dir = os.path.join(current_app.root_path, "static", "uploads")
-            os.makedirs(upload_dir, exist_ok=True)
-            logo_filename = os.path.join("uploads", logo.filename)
-            logo.save(os.path.join(upload_dir, logo.filename))
-
-        # Save shop settings
-        if not s:
-            s = Setting(shop_name=shop_name, shop_phone=shop_phone,
-                        shop_email=shop_email, shop_address=shop_address,
-                        shop_logo=logo_filename, setup_complete=True)
-            db.session.add(s)
+        if existing:
+            cursor.execute(
+                """
+                UPDATE settings
+                SET shop_name=%s, shop_phone=%s, shop_email=%s, shop_address=%s, setup_complete=1
+                WHERE id=%s
+                """,
+                (shop_name, shop_phone, shop_email, shop_address, existing["id"]),
+            )
         else:
-            s.shop_name = shop_name
-            s.shop_phone = shop_phone
-            s.shop_email = shop_email
-            s.shop_address = shop_address
-            s.shop_logo = logo_filename
-            s.setup_complete = True
-        db.session.commit()
+            cursor.execute(
+                """
+                INSERT INTO settings (shop_name, shop_phone, shop_email, shop_address, setup_complete)
+                VALUES (%s, %s, %s, %s, 1)
+                """,
+                (shop_name, shop_phone, shop_email, shop_address),
+            )
 
-        # --- Create admin user ---
-        if admin_username and admin_password:
-            existing = User.query.filter(
-                db.func.lower(User.name) == admin_username
-            ).first()
-            if not existing:
-                new_admin = User (name=admin_username, role="admin")
-                new_admin.set_password(admin_password)
-                db.session.add(new_admin)
-                db.session.commit()
+        conn.commit()
+        cursor.close()
+        conn.close()
 
-        flash("Setup complete. You can now log in.", "success")
-        return redirect(url_for("auth.login"))
+        flash("✅ Setup complete!", "success")
+        return redirect(url_for("main.dashboard"))
 
-    return render_template("setup.html", settings=s)
+    # GET — load existing data if present
+    conn = get_conn()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM settings LIMIT 1;")
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
 
+    return render_template("setup.html", settings=row or {})

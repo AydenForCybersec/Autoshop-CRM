@@ -8,5 +8,5 @@ SQLAlchemy
 alembic
 Werkzeug
 Flask-SQLAlchemy
-
+psutil
 

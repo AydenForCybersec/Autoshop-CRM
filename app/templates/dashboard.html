@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-5">
+<div class="container mt-5 position-relative">
+
+  <!-- Temperature Monitor (Top Right) -->
+  <div style="position: absolute; top: 10px; right: 10px;">
+    <div class="card bg-dark text-white shadow">
+      <div class="card-body p-2 text-center">
+        <strong>Pi Temp:</strong> <span id="pi-temp">Loading...</span>
+      </div>
+    </div>
+  </div>
+
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
@@ -17,8 +27,62 @@
     You are logged in as <strong>{{ current_user.name or current_user.username }}</strong>.
   </p>
 
+  <div class="row mt-4">
+    <div class="col-md-4">
+      <div class="card text-center shadow">
+        <div class="card-body">
+          <h5>Customers</h5>
+          <h3>{{ customers }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card text-center shadow">
+        <div class="card-body">
+          <h5>Vehicles</h5>
+          <h3>{{ vehicles }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card text-center shadow">
+        <div class="card-body">
+          <h5>Invoices</h5>
+          <h3>{{ invoices }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="mt-4">
     <a href="{{ url_for('auth.logout') }}" class="btn btn-danger">Logout</a>
   </div>
 </div>
+
+<!-- Live Temperature Update Script -->
+<script>
+async function updatePiTemp() {
+  try {
+    const res = await fetch('/api/system_stats');
+    const data = await res.json();
+    const tempDiv = document.getElementById('pi-temp');
+
+    if (data.temp_c) {
+      tempDiv.textContent = data.temp_c.toFixed(1) + '°C';
+    } else if (data.error) {
+      tempDiv.textContent = 'Error';
+    } else {
+      tempDiv.textContent = 'N/A';
+    }
+  } catch (e) {
+    document.getElementById('pi-temp').textContent = 'Error';
+  }
+}
+
+// Update immediately, then every 10s
+updatePiTemp();
+setInterval(updatePiTemp, 10000);
+</script>
 {% endblock %}
