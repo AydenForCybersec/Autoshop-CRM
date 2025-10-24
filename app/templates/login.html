@@ -1,19 +1,36 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Login - Autoshop CRM</title>
-</head>
-<body>
-  <h1>Login</h1>
-  <form method="POST">
-    <label>Email:</label><br>
-    <input type="email" name="email" required><br><br>
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5" style="max-width: 400px;">
+  <h3 class="text-center mb-4">Login</h3>
 
-    <label>Password:</label><br>
-    <input type="password" name="password" required><br><br>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 
-    <button type="submit">Login</button>
+  <form method="POST" action="{{ url_for('auth.login') }}">
+    <div class="mb-3">
+      <label for="username" class="form-label">Username</label>
+      <input type="text" class="form-control" id="username" name="username" required autofocus>
+    </div>
+
+    <div class="mb-3">
+      <label for="password" class="form-label">Password</label>
+      <input type="password" class="form-control" id="password" name="password" required>
+    </div>
+
+    <div class="form-check mb-3">
+      <input type="checkbox" class="form-check-input" id="remember" name="remember">
+      <label class="form-check-label" for="remember">Remember me</label>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100">Login</button>
   </form>
-</body>
-</html>
-
+</div>
+{% endblock %}

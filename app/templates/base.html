@@ -1,32 +1,57 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>{{title or "AutoShop CRM"}}</title>
+    <title>{{ title or (settings.shop_name if settings else "AutoShop CRM") }}</title>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    {# Dynamic favicon (uploaded shop logo) #}
+    {% if settings and settings.shop_logo %}
+      <link rel="icon" type="image/png" href="{{ url_for('static', filename=settings.shop_logo) }}">
+    {% else %}
+      <link rel="icon" type="image/png" href="{{ url_for('static', filename='default_favicon.png') }}">
+    {% endif %}
   </head>
+
   <body>
-    <nav class="navbar navbar-expand bg-light">
-      <div class="container">
-        <a href="{{ url_for('main.dashboard') }}" class="navbar-brand">{{ settings.shop_name if settings else 'AutoShop' }}</a>
+    <nav class="navbar navbar-expand bg-light shadow-sm">
+      <div class="container d-flex align-items-center">
+        <a href="{{ url_for('main.dashboard') }}" class="navbar-brand d-flex align-items-center">
+          {% if settings and settings.shop_logo %}
+            <img src="{{ url_for('static', filename=settings.shop_logo) }}" 
+                 alt="Logo" width="40" height="40" class="me-2 rounded">
+          {% endif %}
+          {{ settings.shop_name if settings else 'AutoShop' }}
+        </a>
         <ul class="navbar-nav ms-auto">
           {% if current_user.is_authenticated %}
-          <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a></li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
+            </li>
           {% else %}
-          <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">Login</a></li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
+            </li>
           {% endif %}
         </ul>
       </div>
     </nav>
+
     <div class="container mt-4">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for cat, msg in messages %}
-            <div class="alert alert-{{cat}}">{{msg}}</div>
+            <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+              {{ msg }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
           {% endfor %}
         {% endif %}
       {% endwith %}
       {% block content %}{% endblock %}
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>

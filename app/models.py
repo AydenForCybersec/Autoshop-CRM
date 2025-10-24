@@ -1,6 +1,7 @@
 from .database import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from flask_login import UserMixin
 
 class Setting(db.Model):
     __tablename__ = "settings"
@@ -12,10 +13,10 @@ class Setting(db.Model):
     shop_logo = db.Column(db.String(255))
     setup_complete = db.Column(db.Boolean, default=False)
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120))
+    name = db.Column(db.String(120), unique=True, index=True)
     email = db.Column(db.String(120), unique=True, index=True)
     password_hash = db.Column(db.String(255))
     role = db.Column(db.String(30), default="admin")
@@ -34,6 +35,7 @@ class User(db.Model):
         db.session.add(u)
         db.session.commit()
         return u
+
 
 class Customer(db.Model):
     __tablename__ = "customers"

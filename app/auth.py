@@ -20,15 +20,21 @@ def init_login(app):
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form.get("email")
-        pw = request.form.get("password")
-        u = User.query.filter_by(email=email).first()
-        if u and u.check_password(pw):
-            login_user(u)
-            flash("Logged in", "success")
+        username = request.form.get("username", "").strip().lower()
+        password = request.form.get("password")
+        remember = request.form.get("remember") == "on"
+
+        user = User.query.filter(db.func.lower(User.name) == username).first()
+
+        if user and user.check_password(password):
+            login_user(user, remember=remember)
+            flash("Logged in successfully!", "success")
             return redirect(url_for("main.dashboard"))
-        flash("Invalid credentials", "danger")
+        else:
+            flash("Invalid username or password.", "danger")
+
     return render_template("login.html")
+
 
 @auth_bp.route("/logout")
 @login_required
