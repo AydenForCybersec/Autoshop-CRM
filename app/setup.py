@@ -1,7 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+9;6ufrom flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 import mysql.connector
 
 setup_bp = Blueprint("setup", __name__, url_prefix="/setup")
+
 
 def get_conn():
     """Open a new MySQL connection using app config"""
@@ -85,3 +86,4 @@ def setup():
     conn.close()
 
     return render_template("setup.html", settings=row or {})
+
