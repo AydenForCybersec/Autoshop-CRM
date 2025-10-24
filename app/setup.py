@@ -3,6 +3,7 @@ from .models import Setting
 from .database import db
 import os
 from flask import current_app
+from werkzeug.utils import secure_filename
 from app.models import User
 
 setup_bp = Blueprint("setup", __name__, template_folder="templates")
@@ -43,8 +44,9 @@ def setup():
         if logo:
             upload_dir = os.path.join(current_app.root_path, "static", "uploads")
             os.makedirs(upload_dir, exist_ok=True)
-            logo_filename = os.path.join("uploads", logo.filename)
-            logo.save(os.path.join(upload_dir, logo.filename))
+            safe_logo_filename = secure_filename(logo.filename)
+            logo_filename = os.path.join("uploads", safe_logo_filename)
+            logo.save(os.path.join(upload_dir, safe_logo_filename))
 
         # Save shop settings
         if not s:
