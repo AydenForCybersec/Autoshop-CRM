@@ -24,15 +24,68 @@ if [ ! -f "run.py" ] && [ ! -f "src/autoshop_crm/__init__.py" ]; then
   exit 1
 fi
 
+# --- Detect OS family ---
+OS_ID=""
+OS_ID_LIKE=""
+if [ -r /etc/os-release ]; then
+  # shellcheck disable=SC1091
+  . /etc/os-release
+  OS_ID="${ID:-}"
+  OS_ID_LIKE="${ID_LIKE:-}"
+fi
+
+is_arch_family() {
+  [[ "$OS_ID" == "arch" ]] || [[ "$OS_ID_LIKE" == *"arch"* ]]
+}
+
+is_debian_family() {
+  [[ "$OS_ID" == "debian" ]] || [[ "$OS_ID" == "ubuntu" ]] || [[ "$OS_ID_LIKE" == *"debian"* ]]
+}
+
 # --- Install dependencies ---
 echo "📦 Installing system dependencies..."
-apt update -y
-apt install -y python3 python3-venv python3-pip python3-dev default-libmysqlclient-dev build-essential mariadb-server mariadb-client curl
+if is_arch_family; then
+  pacman -Sy --noconfirm --needed \
+    python \
+    python-pip \
+    base-devel \
+    mariadb \
+    curl \
+    openssl
+elif is_debian_family; then
+  apt update -y
+  apt install -y \
+    python3 \
+    python3-venv \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    mariadb-server \
+    mariadb-client \
+    curl \
+    openssl
+else
+  echo "❌ Unsupported Linux distribution (ID='${OS_ID}', ID_LIKE='${OS_ID_LIKE}')."
+  echo "   This script currently supports Debian/Ubuntu and Arch-family systems."
+  exit 1
+fi
 
-# --- Start MySQL ---
-echo "⚙️ Ensuring MySQL is running..."
-systemctl enable mysql
-systemctl start mysql
+# --- Prepare MariaDB/MySQL service ---
+DB_SERVICE="mariadb"
+if systemctl list-unit-files | grep -q '^mariadb\.service'; then
+  DB_SERVICE="mariadb"
+elif systemctl list-unit-files | grep -q '^mysql\.service'; then
+  DB_SERVICE="mysql"
+fi
+
+if is_arch_family && [ ! -d /var/lib/mysql/mysql ]; then
+  echo "🛠 Initializing MariaDB data directory..."
+  mariadb-install-db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+fi
+
+echo "⚙️ Ensuring ${DB_SERVICE} is running..."
+systemctl enable "$DB_SERVICE"
+systemctl start "$DB_SERVICE"
 
 # --- Gather environment info ---
 read -p "Enter environment type (dev/prod) [dev]: " ENV
@@ -71,7 +124,7 @@ Flask-Login
 Flask-Migrate
 Flask-SQLAlchemy
 python-dotenv
-mysqlclient
+mysql-connector-python
 bcrypt
 EOF
 fi
@@ -97,11 +150,7 @@ DEVELOPMENT=${DEVELOPMENT}
 HOST=0.0.0.0
 PORT=5000
 
-<<<<<<< HEAD
-DATABASE_URL=mysql+mysqlclient://${DB_USER}:${DB_PASS}@localhost/${DB_NAME}
-=======
 DATABASE_URL=mysql+mysqlconnector://${DB_USER}:${DB_PASS}@localhost/${DB_NAME}
->>>>>>> 9ab98d99409adccf6864717740a5c3677ead61b2
 
 LOG_FILE=logs/app.log
 EOF
@@ -118,16 +167,13 @@ if [ "$DEVELOPMENT" = "false" ]; then
   cat > "$SERVICE_FILE" <<EOF
 [Unit]
 Description=AutoShop CRM Flask Service
-After=network.target mysql.service
+After=network.target ${DB_SERVICE}.service
 
 [Service]
 User=root
 WorkingDirectory=$(pwd)
 Environment="PATH=$(pwd)/venv/bin"
-<<<<<<< HEAD
-=======
 Environment="PYTHONPATH=$(pwd)/src"
->>>>>>> 9ab98d99409adccf6864717740a5c3677ead61b2
 ExecStart=$(pwd)/venv/bin/flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
 Restart=always
 RestartSec=5
@@ -157,13 +203,9 @@ echo "---------------------------------------------"
 if [ "$DEVELOPMENT" = "true" ]; then
   echo "To start the app manually:"
   echo "  source venv/bin/activate"
-<<<<<<< HEAD
-  echo "  flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000"
-=======
   echo "  export PYTHONPATH=$(pwd)/src:$PYTHONPATH"
   echo "  flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000"
   echo "  pytest"
->>>>>>> 9ab98d99409adccf6864717740a5c3677ead61b2
 else
   echo "App is now managed by systemd:"
   echo "  systemctl status autoshop"
