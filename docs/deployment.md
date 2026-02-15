@@ -1,48 +1,84 @@
 # Deployment
 
-## Production Server
+## Production Stack
 
-Recommended stack:
-- Gunicorn
-- systemd
-- PostgreSQL
+Recommended baseline:
+- Gunicorn as WSGI server
+- systemd for service supervision
+- MySQL/MariaDB or PostgreSQL for persistent storage
+- Reverse proxy (Nginx/Caddy) for TLS and public ingress
 
-Example Gunicorn command:
+## Build and Runtime Prerequisites
+
+- Python 3.10+
+- Virtual environment with `requirements.txt` installed
+- `PYTHONPATH` must include `src/` unless you package/install the project
+
+Example:
 
 ```zsh
-gunicorn "autoshop_crm:create_app()"
+export PYTHONPATH="/opt/autoshop-crm/src:${PYTHONPATH:-}"
 ```
-### systemd
-A systemd service file is included in /systemd.
-Ensure environment variables are set securely.
 
+## Required Environment Variables
 
-## 📄 Root `README.md` (Upgrade This)
+- `FLASK_APP=autoshop_crm:create_app`
+- `FLASK_ENV=production`
+- `SECRET_KEY=<strong-random-value>`
+- `DATABASE_URL=<sqlalchemy-url>`
 
-This is what sells the project.
+Optional:
+- `HOST`
+- `PORT`
+- `LOG_FILE`
 
-```markdown
-# Autoshop CRM
+## Database Migration Step
 
-A simple, maintainable CRM for automotive repair shops.
+Run on each deploy that changes schema:
 
-## Features
-- Customer management
-- Vehicle tracking
-- Job/work order tracking
-- Authentication
-- Database migrations
+```zsh
+flask --app autoshop_crm:create_app db upgrade
+```
 
-## Tech Stack
-- Flask
-- SQLAlchemy
-- Alembic
-- pytest
+## Gunicorn Example
 
-## Project Structure
+```zsh
+gunicorn "autoshop_crm:create_app()" --bind 0.0.0.0:5000 --workers 2
+```
 
-See `docs/architecture.md`.
+## systemd Example
 
-## Setup
+Use a unit similar to:
 
-See `docs/setup.md`.
+```ini
+[Unit]
+Description=AutoShop CRM
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/autoshop-crm
+Environment="PATH=/opt/autoshop-crm/venv/bin"
+Environment="PYTHONPATH=/opt/autoshop-crm/src"
+Environment="FLASK_APP=autoshop_crm:create_app"
+Environment="FLASK_ENV=production"
+EnvironmentFile=/opt/autoshop-crm/.env
+ExecStart=/opt/autoshop-crm/venv/bin/gunicorn "autoshop_crm:create_app()" --bind 0.0.0.0:5000 --workers 2
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+## Scripts
+
+- `scripts/setup.sh`: full host bootstrap for Debian/Ubuntu style systems (root required).
+- `scripts/backup_db.sh`: runs `mysqldump` using `DB_*` env vars.
+
+## Deployment Notes
+
+- Back up the database before migration.
+- Keep `.env` out of version control.
+- Prefer serving Flask behind a reverse proxy.
+- See `docs/developer-guide.md` for a full runbook and troubleshooting.

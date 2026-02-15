@@ -1,3 +1,5 @@
+"""Local development entrypoint for running the Flask app directly."""
+
 from autoshop_crm import create_app
 
 app = create_app()

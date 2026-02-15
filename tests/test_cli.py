@@ -1,3 +1,5 @@
+"""Tests for custom Flask CLI commands."""
+
 from autoshop_crm.models.customer import Customer
 from autoshop_crm.models.job import Job
 from autoshop_crm.models.user import User
@@ -5,6 +7,7 @@ from autoshop_crm.models.vehicle import Vehicle
 
 
 def test_seed_demo_data_command(app):
+    """Seed command should populate expected demo entities."""
     runner = app.test_cli_runner()
 
     result = runner.invoke(args=["seed-demo-data"])
@@ -22,6 +25,7 @@ def test_seed_demo_data_command(app):
 
 
 def test_seed_demo_data_is_idempotent_for_user_and_customers(app):
+    """Re-running seed should not duplicate user/customer records."""
     runner = app.test_cli_runner()
 
     first_run = runner.invoke(args=["seed-demo-data", "--username", "owner"])

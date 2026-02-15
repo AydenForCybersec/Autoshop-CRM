@@ -1,7 +1,10 @@
+"""Tests for customer service helpers."""
+
 from autoshop_crm.services.customers import create_customer, get_all_customers
 
 
 def test_create_customer(app):
+    """Creating a customer should return a persisted model with an id."""
     customer = create_customer(
         name="John Doe",
         email="john@example.com",
@@ -13,6 +16,7 @@ def test_create_customer(app):
 
 
 def test_get_all_customers(app):
+    """Listing customers should return all seeded records."""
     create_customer("Alice")
     create_customer("Bob")
 

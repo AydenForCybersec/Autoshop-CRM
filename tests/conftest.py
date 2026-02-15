@@ -1,3 +1,5 @@
+"""Shared pytest fixtures for app and client setup."""
+
 import pytest
 
 from autoshop_crm import create_app
@@ -6,6 +8,7 @@ from autoshop_crm.extensions import db
 
 @pytest.fixture
 def app():
+    """Build a Flask app configured for isolated in-memory testing."""
     app = create_app()
     app.config.update(
         TESTING=True,
@@ -23,4 +26,5 @@ def app():
 
 @pytest.fixture
 def client(app):
+    """Return a test client bound to the pytest app fixture."""
     return app.test_client()

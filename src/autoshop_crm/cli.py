@@ -1,4 +1,9 @@
+"""Custom Flask CLI commands for setup and demo data seeding."""
+
+from __future__ import annotations
+
 import click
+from flask import Flask
 from flask.cli import with_appcontext
 
 from .extensions import db
@@ -10,7 +15,8 @@ from .models.vehicle import Vehicle
 
 @click.command("create-db")
 @with_appcontext
-def create_db():
+def create_db() -> None:
+    """Create all database tables using SQLAlchemy metadata."""
     db.create_all()
     click.echo("Database created")
 
@@ -135,6 +141,7 @@ def seed_demo_data(username: str, password: str):
     click.echo(f"Login with username='{username}' and password='{password}'")
 
 
-def register_commands(app):
+def register_commands(app: Flask) -> None:
+    """Register custom CLI commands on the Flask app instance."""
     app.cli.add_command(create_db)
     app.cli.add_command(seed_demo_data)

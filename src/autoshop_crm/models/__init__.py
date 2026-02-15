@@ -1,3 +1,5 @@
+"""Convenience exports for ORM models."""
+
 from .customer import Customer
 from .vehicle import Vehicle
 from .job import Job

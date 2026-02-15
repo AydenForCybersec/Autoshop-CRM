@@ -1,3 +1,5 @@
+"""Flask application factory and blueprint wiring."""
+
 from flask import Flask
 
 from .config import get_config
@@ -12,7 +14,8 @@ from .routes.jobs import jobs_bp
 from .routes.auth import auth_bp
 
 
-def create_app():
+def create_app() -> Flask:
+    """Create, configure, and return the Flask application instance."""
     app = Flask(__name__)
 
     # Load config
