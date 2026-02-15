@@ -1,0 +1,34 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Customer{% endblock %}
+
+{% block content %}
+<h1>{{ customer.name }}</h1>
+
+<p>Email: {{ customer.email or "—" }}</p>
+<p>Phone: {{ customer.phone or "—" }}</p>
+
+<h2>Vehicles</h2>
+
+<ul>
+    {% for vehicle in customer.vehicles %}
+        <li>
+            <a href="{{ url_for('vehicles.vehicle_detail', vehicle_id=vehicle.id) }}">
+                {{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}
+            </a>
+        </li>
+    {% else %}
+        <li>No vehicles yet.</li>
+    {% endfor %}
+</ul>
+
+<h3>Add Vehicle</h3>
+
+<form method="post" action="{{ url_for('vehicles.create') }}">
+    <input type="hidden" name="customer_id" value="{{ customer.id }}">
+    <input type="text" name="make" placeholder="Make" required>
+    <input type="text" name="model" placeholder="Model" required>
+    <input type="number" name="year" placeholder="Year">
+    <button type="submit">Add Vehicle</button>
+</form>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Vehicle{% endblock %}
+
+{% block content %}
+<h1>{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}</h1>
+
+<h2>Jobs</h2>
+
+<ul>
+    {% for job in jobs %}
+        <li>
+            {{ job.description }} —
+            <strong>{{ job.status }}</strong>
+
+            <form method="post"
+                  action="{{ url_for('jobs.update_status', job_id=job.id) }}"
+                  style="display:inline;">
+                <select name="status">
+                    <option value="open">Open</option>
+                    <option value="completed">Completed</option>
+                </select>
+                <button type="submit">Update</button>
+            </form>
+        </li>
+    {% else %}
+        <li>No jobs found.</li>
+    {% endfor %}
+</ul>
+
+<h3>Add Job</h3>
+
+<form method="post" action="{{ url_for('jobs.create') }}">
+    <input type="hidden" name="vehicle_id" value="{{ vehicle.id }}">
+    <input type="text" name="description" placeholder="Description" required>
+    <input type="number" step="0.01" name="cost" placeholder="Cost">
+    <button type="submit">Add Job</button>
+</form>
+{% endblock %}
