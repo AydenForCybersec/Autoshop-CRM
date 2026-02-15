@@ -29,7 +29,6 @@
                         <span class="status-badge status-completed">Covered</span>
                     </div>
                     <p class="entity-meta">
-                        Source: {{ part.supplier or "Unknown supplier" }} ·
                         Job: {{ part.job.description }} ·
                         Purchased: {{ part.purchased_on.strftime('%Y-%m-%d') if part.purchased_on else "Unknown" }} ·
                         Expires: {{ part.warranty_expires_on.strftime('%Y-%m-%d') if part.warranty_expires_on else "No expiry" }}
@@ -52,143 +51,127 @@
         <ul class="entity-list job-list">
             {% for job in jobs %}
                 <li class="entity-item job-item">
-                    <div class="job-main">
-                        <span class="entity-title">{{ job.description }}</span>
-                        <span class="status-badge status-{{ job.status|lower|replace(' ', '-') }}">{{ job.status }}</span>
-                    </div>
+                    <details class="job-collapsible" {% if loop.first %}open{% endif %}>
+                        <summary class="job-summary">
+                            <span class="job-summary-main">
+                                <span class="entity-title">{{ job.description }}</span>
+                                <span class="status-badge status-{{ job.status|lower|replace(' ', '-') }}">{{ job.status|replace('_', ' ')|title }}</span>
+                            </span>
+                            <span class="entity-meta">
+                                {{ job.created_at.strftime('%Y-%m-%d') if job.created_at else "Unknown" }} ·
+                                Total Cost: ${{ '%.2f'|format(job.cost or 0) }} ·
+                                Expenses: ${{ '%.2f'|format(job.expenses_total) }}
+                            </span>
+                        </summary>
 
-                    <div class="job-sub">
-                        <span class="entity-meta">
-                            Date: {{ job.created_at.strftime('%Y-%m-%d') if job.created_at else "Unknown" }} ·
-                            Total Cost: {% if job.cost is not none %}${{ '%.2f'|format(job.cost) }}{% else %}N/A{% endif %} ·
-                            Total Expenses: ${{ '%.2f'|format(job.expenses_total) }}
-                        </span>
+                        <div class="job-collapsible-body">
+                            <div class="job-sub">
+                                <form method="post" action="{{ url_for('jobs.update_status', job_id=job.id) }}" class="inline-form">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <label class="sr-only" for="status-{{ job.id }}">Update status</label>
+                                    <select id="status-{{ job.id }}" name="status">
+                                        <option value="open" {% if job.status == 'open' %}selected{% endif %}>Open</option>
+                                        <option value="in_progress" {% if job.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                        <option value="on_hold" {% if job.status == 'on_hold' %}selected{% endif %}>On Hold</option>
+                                        <option value="completed" {% if job.status == 'completed' %}selected{% endif %}>Completed</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-secondary">Update</button>
+                                </form>
+                                <a class="btn btn-secondary" href="{{ url_for('jobs.invoice', job_id=job.id) }}" target="_blank" rel="noopener">Print Invoice</a>
+                            </div>
 
-                        <form method="post" action="{{ url_for('jobs.update_status', job_id=job.id) }}" class="inline-form">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <label class="sr-only" for="status-{{ job.id }}">Update status</label>
-                            <select id="status-{{ job.id }}" name="status">
-                                <option value="open" {% if job.status == 'open' %}selected{% endif %}>Open</option>
-                                <option value="in_progress" {% if job.status == 'in_progress' %}selected{% endif %}>In Progress</option>
-                                <option value="on_hold" {% if job.status == 'on_hold' %}selected{% endif %}>On Hold</option>
-                                <option value="completed" {% if job.status == 'completed' %}selected{% endif %}>Completed</option>
-                            </select>
-                            <button type="submit" class="btn btn-secondary">Update</button>
-                        </form>
-                    </div>
+                            <div class="job-parts">
+                                <h3>Parts Used</h3>
+                                {% if job.parts %}
+                                    <ul class="entity-list part-list">
+                                        {% for part in job.parts %}
+                                            <li class="entity-item part-item">
+                                                <div class="part-main">
+                                                    <span class="entity-title">{{ part.part_name }}</span>
+                                                    {% if part.warranty_expires_on %}
+                                                        <span class="chip">Warranty to {{ part.warranty_expires_on.strftime('%Y-%m-%d') }}</span>
+                                                    {% else %}
+                                                        <span class="chip">No warranty</span>
+                                                    {% endif %}
+                                                </div>
+                                                <p class="entity-meta">
+                                                    Purchased: {{ part.purchased_on.strftime('%Y-%m-%d') if part.purchased_on else "Unknown" }} ·
+                                                    Part Price: ${{ '%.2f'|format(part.part_price or 0) }} ·
+                                                    Labor: ${{ '%.2f'|format(part.labor_cost or 0) }} ·
+                                                    Invoice Line Total: ${{ '%.2f'|format(part.invoice_line_total) }}
+                                                    {% if part.notes %}
+                                                        · Notes: {{ part.notes }}
+                                                    {% endif %}
+                                                </p>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="entity-meta">No parts added to this job yet.</p>
+                                {% endif %}
 
-                    <form method="post" action="{{ url_for('jobs.edit_cost', job_id=job.id) }}" class="inline-form">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <label class="sr-only" for="cost-{{ job.id }}">Edit total cost</label>
-                        <input id="cost-{{ job.id }}" type="number" step="0.01" min="0" name="cost" value="{{ '%.2f'|format(job.cost) if job.cost is not none else '' }}" placeholder="Set final total cost">
-                        <button type="submit" class="btn btn-secondary">Save Cost</button>
-                    </form>
+                                <form method="post" action="{{ url_for('jobs.add_part', job_id=job.id) }}" class="form-grid">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <label class="field">
+                                        <span>Part Name</span>
+                                        <input type="text" name="part_name" placeholder="Alternator" required>
+                                    </label>
+                                    <label class="field">
+                                        <span>Supplier</span>
+                                        <input type="text" name="supplier" placeholder="AutoZone">
+                                    </label>
+                                    <label class="field">
+                                        <span>Part Price (Customer)</span>
+                                        <input type="number" name="part_price" min="0" step="0.01" placeholder="225.00">
+                                    </label>
+                                    <label class="field">
+                                        <span>Labor (Customer)</span>
+                                        <input type="number" name="labor_cost" min="0" step="0.01" placeholder="120.00">
+                                    </label>
+                                    <label class="field">
+                                        <span>Warranty Years</span>
+                                        <input type="number" name="warranty_years" min="0" step="1" placeholder="2">
+                                    </label>
+                                    <label class="field">
+                                        <span>Purchased Date</span>
+                                        <input type="date" name="purchased_on">
+                                    </label>
+                                    <label class="field">
+                                        <span>Notes</span>
+                                        <input type="text" name="notes" placeholder="Receipt #12345">
+                                    </label>
+                                    <button type="submit" class="btn btn-secondary">Add Part</button>
+                                </form>
+                            </div>
 
-                    <div class="job-parts">
-                        <h3>Parts Used</h3>
-                        {% if job.parts %}
-                            <ul class="entity-list part-list">
-                                {% for part in job.parts %}
-                                    <li class="entity-item part-item">
-                                        <div class="part-main">
-                                            <span class="entity-title">{{ part.part_name }}</span>
-                                            {% if part.warranty_expires_on %}
-                                                <span class="chip">Warranty to {{ part.warranty_expires_on.strftime('%Y-%m-%d') }}</span>
-                                            {% else %}
-                                                <span class="chip">No warranty</span>
-                                            {% endif %}
-                                        </div>
-                                        <p class="entity-meta">
-                                            Source: {{ part.supplier or "Unknown supplier" }} ·
-                                            Purchased: {{ part.purchased_on.strftime('%Y-%m-%d') if part.purchased_on else "Unknown" }}
-                                            {% if part.notes %}
-                                                · Notes: {{ part.notes }}
-                                            {% endif %}
-                                        </p>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="entity-meta">No parts added to this job yet.</p>
-                        {% endif %}
+                            <div class="job-parts">
+                                <h3>Expense List</h3>
+                                {% if job.expenses %}
+                                    <ul class="entity-list part-list">
+                                        {% for expense in job.expenses %}
+                                            <li class="entity-item part-item">
+                                                <div class="part-main">
+                                                    <span class="entity-title">{{ expense.description }}</span>
+                                                    <span class="chip">${{ '%.2f'|format(expense.amount) }}</span>
+                                                </div>
+                                                <p class="entity-meta">
+                                                    Date: {{ expense.incurred_on.strftime('%Y-%m-%d') if expense.incurred_on else "Unknown" }}
+                                                    {% if expense.notes %}
+                                                        · Notes: {{ expense.notes }}
+                                                    {% endif %}
+                                                </p>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="entity-meta">No expenses added to this job yet.</p>
+                                {% endif %}
 
-                        <form method="post" action="{{ url_for('jobs.add_part', job_id=job.id) }}" class="form-grid">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <label class="field">
-                                <span>Part Name</span>
-                                <input type="text" name="part_name" placeholder="Alternator" required>
-                            </label>
-                            <label class="field">
-                                <span>Supplier</span>
-                                <input type="text" name="supplier" placeholder="AutoZone">
-                            </label>
-                            <label class="field">
-                                <span>Warranty Years</span>
-                                <input type="number" name="warranty_years" min="0" step="1" placeholder="2">
-                            </label>
-                            <label class="field">
-                                <span>Purchased Date</span>
-                                <input type="date" name="purchased_on">
-                            </label>
-                            <label class="field">
-                                <span>Notes</span>
-                                <input type="text" name="notes" placeholder="Receipt #12345">
-                            </label>
-                            <button type="submit" class="btn btn-secondary">Add Part</button>
-                        </form>
-                    </div>
-
-                    <div class="job-parts">
-                        <h3>Expense List</h3>
-                        {% if job.expenses %}
-                            <ul class="entity-list part-list">
-                                {% for expense in job.expenses %}
-                                    <li class="entity-item part-item">
-                                        <div class="part-main">
-                                            <span class="entity-title">{{ expense.description }}</span>
-                                            <span class="chip">${{ '%.2f'|format(expense.amount) }}</span>
-                                        </div>
-                                        <p class="entity-meta">
-                                            Vendor: {{ expense.vendor or "Unknown" }} ·
-                                            Date: {{ expense.incurred_on.strftime('%Y-%m-%d') if expense.incurred_on else "Unknown" }}
-                                            {% if expense.notes %}
-                                                · Notes: {{ expense.notes }}
-                                            {% endif %}
-                                        </p>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p class="entity-meta">No expenses added to this job yet.</p>
-                        {% endif %}
-
-                        <p class="entity-meta"><strong>Total expense spent on this repair:</strong> ${{ '%.2f'|format(job.expenses_total) }}</p>
-
-                        <form method="post" action="{{ url_for('jobs.add_expense', job_id=job.id) }}" class="form-grid">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <label class="field">
-                                <span>Expense Description</span>
-                                <input type="text" name="description" placeholder="Shop supplies" required>
-                            </label>
-                            <label class="field">
-                                <span>Amount</span>
-                                <input type="number" name="amount" min="0" step="0.01" placeholder="42.50" required>
-                            </label>
-                            <label class="field">
-                                <span>Vendor</span>
-                                <input type="text" name="vendor" placeholder="AutoZone">
-                            </label>
-                            <label class="field">
-                                <span>Expense Date</span>
-                                <input type="date" name="incurred_on">
-                            </label>
-                            <label class="field">
-                                <span>Notes</span>
-                                <input type="text" name="notes" placeholder="Receipt #321">
-                            </label>
-                            <button type="submit" class="btn btn-secondary">Add Expense</button>
-                        </form>
-                    </div>
+                                <p class="entity-meta"><strong>Total expense spent on this repair:</strong> ${{ '%.2f'|format(job.expenses_total) }}</p>
+                                <p class="entity-meta">Expense entry is no longer shown in this view.</p>
+                            </div>
+                        </div>
+                    </details>
                 </li>
             {% else %}
                 <li class="empty-state">No jobs found yet.</li>
@@ -209,11 +192,6 @@
             <label class="field">
                 <span>Description</span>
                 <input type="text" name="description" placeholder="Brake pad replacement" required>
-            </label>
-
-            <label class="field">
-                <span>Cost</span>
-                <input type="number" step="0.01" name="cost" placeholder="120.00">
             </label>
 
             <label class="field">

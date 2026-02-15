@@ -476,7 +476,6 @@ def build_vehicle_history_pdf(
             if job.parts:
                 add_wrapped("Parts & Warranty:", font="F2", size=10, width=95)
                 for part in job.parts:
-                    supplier = f" from {part.supplier}" if part.supplier else ""
                     purchased = part.purchased_on.strftime("%Y-%m-%d") if part.purchased_on else "Unknown"
                     expiry = (
                         part.warranty_expires_on.strftime("%Y-%m-%d")
@@ -485,7 +484,7 @@ def build_vehicle_history_pdf(
                     )
                     duration = f"{part.warranty_years} yr" if part.warranty_years else "N/A"
                     status_label = _warranty_status(part.warranty_expires_on, reference=warranty_reference)
-                    add_wrapped(f"- {part.part_name}{supplier}", width=92)
+                    add_wrapped(f"- {part.part_name}", width=92)
                     add_wrapped(
                         f"  Purchased: {purchased} | Warranty: {duration} | Expires: {expiry} | Status: {status_label}",
                         width=92,
@@ -522,7 +521,7 @@ def build_vehicle_history_pdf(
             page_ops,
             x=margin_x,
             y=30,
-            text="This report is for service reference only. Warranty eligibility is subject to supplier terms.",
+            text="This report is for service reference only. Warranty eligibility may vary by part.",
             font="F1",
             size=8,
         )

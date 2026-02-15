@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask.typing import ResponseReturnValue
@@ -180,13 +181,47 @@ def settings() -> ResponseReturnValue:
             shop_phone = request.form.get("shop_phone", "").strip() or None
             shop_email = request.form.get("shop_email", "").strip() or None
             shop_address = request.form.get("shop_address", "").strip() or None
+            invoice_footer_message = request.form.get("invoice_footer_message", "").strip() or None
+            tax_percentage_raw = request.form.get(
+                "tax_percentage",
+                str(settings.tax_percentage if settings.tax_percentage is not None else 0.0),
+            ).strip()
 
             form_values = {
                 "shop_name": shop_name_input or existing_shop_name,
                 "shop_phone": shop_phone or "",
                 "shop_email": shop_email or "",
                 "shop_address": shop_address or "",
+                "invoice_footer_message": invoice_footer_message or "",
+                "tax_percentage": tax_percentage_raw,
             }
+
+            try:
+                tax_value = Decimal(tax_percentage_raw) if tax_percentage_raw else Decimal("0")
+            except InvalidOperation:
+                flash("Tax percentage must be a valid number.")
+                return _render_settings(
+                    settings,
+                    preferences,
+                    active_tab=active_tab,
+                    form_values=form_values,
+                )
+            if tax_value < 0:
+                flash("Tax percentage cannot be negative.")
+                return _render_settings(
+                    settings,
+                    preferences,
+                    active_tab=active_tab,
+                    form_values=form_values,
+                )
+            if abs(tax_value.as_tuple().exponent) > 4:
+                flash("Tax percentage can have up to 4 decimal places.")
+                return _render_settings(
+                    settings,
+                    preferences,
+                    active_tab=active_tab,
+                    form_values=form_values,
+                )
 
             try:
                 uploaded_logo = save_business_logo(request.files.get("business_logo"), current_app.static_folder)
@@ -203,6 +238,8 @@ def settings() -> ResponseReturnValue:
             settings.shop_phone = shop_phone
             settings.shop_email = shop_email
             settings.shop_address = shop_address
+            settings.invoice_footer_message = invoice_footer_message
+            settings.tax_percentage = float(tax_value)
             if uploaded_logo:
                 settings.shop_logo = uploaded_logo
 

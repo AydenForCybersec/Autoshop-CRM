@@ -13,5 +13,7 @@ class BusinessSettings(db.Model):
     shop_phone = db.Column(db.String(50))
     shop_email = db.Column(db.String(120))
     shop_address = db.Column(db.Text)
+    invoice_footer_message = db.Column(db.Text)
+    tax_percentage = db.Column(db.Float, nullable=False, default=0.0)
     shop_logo = db.Column(db.String(255))
     setup_complete = db.Column(db.Boolean, nullable=False, default=False)

@@ -25,7 +25,15 @@ def vehicle_detail(vehicle_id: int) -> ResponseReturnValue:
     vehicle = get_vehicle(vehicle_id)
     jobs = get_jobs_for_vehicle(vehicle_id)
     warranty_parts = get_active_warranty_parts_for_vehicle(vehicle_id=vehicle_id)
-    return render_template("vehicles/detail.html", vehicle=vehicle, jobs=jobs, warranty_parts=warranty_parts)
+    settings = BusinessSettings.query.first()
+    tax_percentage = float(settings.tax_percentage if settings and settings.tax_percentage is not None else 0.0)
+    return render_template(
+        "vehicles/detail.html",
+        vehicle=vehicle,
+        jobs=jobs,
+        warranty_parts=warranty_parts,
+        tax_percentage=tax_percentage,
+    )
 
 
 @vehicles_bp.route("/create", methods=["POST"])

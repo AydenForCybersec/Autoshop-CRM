@@ -1,0 +1,398 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Invoice Job #{{ job.id }} | {{ app_name }}{% endblock %}
+
+{% block content %}
+<style>
+    @import url("https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap");
+
+    .invoice-print-area {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 1.25rem;
+    }
+
+    .invoice-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #000;
+        margin-bottom: 1rem;
+    }
+
+    .invoice-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .invoice-logo {
+        width: 96px;
+        height: 96px;
+        border-radius: 10px;
+        object-fit: cover;
+        border: 1px solid #d7e3da;
+        background: #fff;
+    }
+
+    .invoice-logo-fallback {
+        width: 96px;
+        height: 96px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, var(--brand), #3ea56f);
+    }
+
+    .invoice-shop-name {
+        margin: 0;
+        font-family: "Fraunces", serif;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #163626;
+    }
+
+    .invoice-meta-line {
+        margin: 0.2rem 0 0;
+        color: var(--muted);
+        font-size: 0.88rem;
+    }
+
+    .invoice-title-block {
+        text-align: right;
+    }
+
+    .invoice-title {
+        margin: 0;
+        font-family: "Fraunces", serif;
+        letter-spacing: 0.02em;
+        font-size: 1.65rem;
+    }
+
+    .invoice-billto {
+        display: grid;
+        gap: 0.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .invoice-billto p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .invoice-label {
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        font-size: 0.72rem;
+        color: #4a5f53;
+    }
+
+    .invoice-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        margin-top: 0.5rem;
+    }
+
+    .invoice-table col.invoice-col-item {
+        width: 60%;
+    }
+
+    .invoice-table col.invoice-col-part {
+        width: 20%;
+    }
+
+    .invoice-table col.invoice-col-labor {
+        width: 20%;
+    }
+
+    .invoice-table th,
+    .invoice-table td {
+        padding: 0.62rem 0.7rem;
+        border-bottom: 1px solid #000;
+        vertical-align: top;
+        word-wrap: break-word;
+    }
+
+    .invoice-table thead th {
+        background: #f2f2f2;
+        color: #000;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .invoice-line-items tbody tr:nth-child(even) {
+        background: #f7f7f7;
+    }
+
+    .invoice-table th:nth-child(1),
+    .invoice-table td:nth-child(1) {
+        padding-right: 1.9rem;
+    }
+
+    .invoice-table th:nth-child(2),
+    .invoice-table td:nth-child(2) {
+        text-align: right;
+        padding-right: 1.3rem;
+    }
+
+    .invoice-table th:nth-child(3),
+    .invoice-table td:nth-child(3) {
+        text-align: right;
+    }
+
+    .invoice-totals {
+        margin-top: 0.7rem;
+    }
+
+    .invoice-totals td:first-child {
+        border-bottom: 0;
+        background: transparent;
+    }
+
+    .invoice-totals th {
+        text-transform: none;
+        letter-spacing: 0;
+        font-size: 0.9rem;
+        background: transparent;
+        text-align: right;
+        color: #2f4b3c;
+    }
+
+    .invoice-totals .invoice-total-row th,
+    .invoice-totals .invoice-total-row td {
+        border-top: 2px solid #000;
+        border-bottom: 0;
+        font-weight: 800;
+        color: #000;
+    }
+
+    .invoice-page-footer {
+        margin-top: 1.4rem;
+        padding-top: 0.8rem;
+        border-top: 1px dashed #000;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: end;
+    }
+
+    .invoice-footer-message {
+        grid-column: 2;
+        margin: 0;
+        text-align: center;
+        color: #000;
+        font-size: 1.7rem;
+        line-height: 1;
+        font-family: "Caveat", "Brush Script MT", cursive;
+    }
+
+    .invoice-paid-box {
+        grid-column: 3;
+        justify-self: end;
+        width: 180px;
+        height: 88px;
+        border: 2px dashed #000;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #000;
+        font-weight: 700;
+        font-size: 0.85rem;
+        background: #fff;
+    }
+
+    .invoice-paid-box span {
+        opacity: 0.72;
+    }
+
+    @media print {
+        @page {
+            size: auto;
+            margin: 10mm;
+        }
+
+        body * {
+            visibility: hidden;
+        }
+
+        .invoice-print-area,
+        .invoice-print-area * {
+            visibility: visible;
+        }
+
+        .invoice-print-area {
+            position: absolute;
+            left: 10mm;
+            top: 10mm;
+            right: 10mm;
+            width: auto;
+            max-width: none;
+            margin: 0;
+            padding: 0 0 36mm;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            min-height: 0;
+            display: block;
+        }
+
+        .invoice-table thead {
+            display: table-header-group;
+        }
+
+        .invoice-table tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .invoice-page-footer {
+            position: fixed;
+            left: 10mm;
+            right: 10mm;
+            bottom: 10mm;
+            height: 26mm;
+            margin: 0;
+            padding: 0;
+            border-top: 0;
+            display: block;
+            break-inside: auto;
+            page-break-inside: auto;
+        }
+
+        .invoice-footer-message {
+            position: absolute;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: min(78%, calc(100% - 220px));
+            text-align: center;
+            line-height: 1.1;
+            font-size: 1.8rem;
+        }
+
+        .invoice-paid-box {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+        }
+
+        .no-print {
+            display: none !important;
+        }
+    }
+</style>
+
+{% set display_shop_name = "Autoworks" %}
+{% set display_shop_phone = "5738361519" %}
+{% set display_shop_email = "aydenrq@proton.me" %}
+{% set display_shop_address = "444 State Hwy P, Camdenton, MO" %}
+{% set invoice_footer_message = settings.invoice_footer_message if settings and settings.invoice_footer_message else "Thank you and drive safe Autoworks" %}
+
+<section class="panel invoice-print-area">
+    <div class="panel-head no-print">
+        <h1>Invoice</h1>
+        <button class="btn btn-primary" type="button" onclick="window.print()">Print</button>
+    </div>
+
+    <header class="invoice-head">
+        <div class="invoice-brand">
+            {% if app_logo_url %}
+                <img class="invoice-logo" src="{{ app_logo_url }}" alt="{{ app_name }} logo">
+            {% else %}
+                <span class="invoice-logo-fallback" aria-hidden="true">{{ app_initials }}</span>
+            {% endif %}
+            <div>
+                <p class="invoice-shop-name">{{ display_shop_name }}</p>
+                <p class="invoice-meta-line">{{ display_shop_phone }}</p>
+                <p class="invoice-meta-line">{{ display_shop_email }}</p>
+                <p class="invoice-meta-line">{{ display_shop_address }}</p>
+            </div>
+        </div>
+        <div class="invoice-title-block">
+            <h2 class="invoice-title">INVOICE</h2>
+            <p class="invoice-meta-line">Invoice Date: {{ job.created_at.strftime('%Y-%m-%d') if job.created_at else "Unknown" }}</p>
+            <p class="invoice-meta-line">Job #{{ job.id }}</p>
+        </div>
+    </header>
+
+    <section class="invoice-billto">
+        <span class="invoice-label">Bill To</span>
+        <p><strong>{{ customer.name if customer else "Unknown customer" }}</strong></p>
+        <p>Vehicle: {{ vehicle.year or "Year N/A" }} {{ vehicle.make }} {{ vehicle.model }}</p>
+    </section>
+
+    <table class="invoice-table invoice-line-items">
+        <colgroup>
+            <col class="invoice-col-item">
+            <col class="invoice-col-part">
+            <col class="invoice-col-labor">
+        </colgroup>
+        <thead>
+            <tr>
+                <th>Part / Service</th>
+                <th>Part Price</th>
+                <th>Labor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for part in job.parts %}
+                <tr>
+                    <td>{{ part.part_name }}</td>
+                    <td>${{ '%.2f'|format(part.part_price or 0) }}</td>
+                    <td>${{ '%.2f'|format(part.labor_cost or 0) }}</td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="3">No parts/services added yet.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <table class="invoice-table invoice-totals">
+        <colgroup>
+            <col class="invoice-col-item">
+            <col class="invoice-col-part">
+            <col class="invoice-col-labor">
+        </colgroup>
+        <tbody>
+            <tr>
+                <td></td>
+                <th scope="row">Parts</th>
+                <td>${{ '%.2f'|format(parts_total) }}</td>
+            </tr>
+            <tr>
+                <td></td>
+                <th scope="row">Labor</th>
+                <td>${{ '%.2f'|format(labor_total) }}</td>
+            </tr>
+            <tr>
+                <td></td>
+                <th scope="row">Tax ({{ '%.2f'|format(tax_percentage) }}%)</th>
+                <td>${{ '%.2f'|format(tax_amount) }}</td>
+            </tr>
+            <tr class="invoice-total-row">
+                <td></td>
+                <th scope="row">Total</th>
+                <td>${{ '%.2f'|format(total) }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <footer class="invoice-page-footer">
+        <p class="invoice-footer-message">{{ invoice_footer_message }}</p>
+        <div class="invoice-paid-box">
+        </div>
+    </footer>
+</section>
+{% endblock %}

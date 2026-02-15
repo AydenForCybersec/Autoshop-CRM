@@ -49,6 +49,8 @@ def test_settings_update_persists_business_and_preferences(settings_client, sett
             "shop_phone": "(555) 123-4567",
             "shop_email": "service@northside.test",
             "shop_address": "123 Main St",
+            "invoice_footer_message": "Thank you and drive safe Northside Auto",
+            "tax_percentage": "8.25",
         },
         follow_redirects=False,
     )
@@ -87,6 +89,8 @@ def test_settings_update_persists_business_and_preferences(settings_client, sett
         assert settings.shop_phone == "(555) 123-4567"
         assert settings.shop_email == "service@northside.test"
         assert settings.shop_address == "123 Main St"
+        assert settings.invoice_footer_message == "Thank you and drive safe Northside Auto"
+        assert settings.tax_percentage == 8.25
         assert prefs.primary_color == "#102030"
         assert prefs.accent_color == "#405060"
         assert prefs.background_color == "#708090"
@@ -186,6 +190,7 @@ def test_settings_logo_upload_updates_shop_logo(settings_client, settings_app):
             "shop_phone": "",
             "shop_email": "",
             "shop_address": "",
+            "tax_percentage": "0",
             "business_logo": (BytesIO(b"fake image bytes"), "brand.png"),
         },
         content_type="multipart/form-data",
@@ -201,6 +206,54 @@ def test_settings_logo_upload_updates_shop_logo(settings_client, settings_app):
         assert settings.shop_logo.startswith("uploads/logos/brand-")
         assert settings.shop_logo.endswith(".png")
         assert Path(settings_app.static_folder, settings.shop_logo).exists()
+
+
+def test_settings_rejects_negative_tax_percentage(settings_client, settings_app):
+    """Tax percentage should reject negative values."""
+    response = settings_client.post(
+        "/settings",
+        data={
+            "action": "update_business",
+            "active_tab": "business",
+            "shop_name": "Northside Auto",
+            "shop_phone": "",
+            "shop_email": "",
+            "shop_address": "",
+            "tax_percentage": "-1",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 200
+    assert b"Tax percentage cannot be negative." in response.data
+
+    with settings_app.app_context():
+        settings = BusinessSettings.query.first()
+        assert settings is not None
+        assert settings.tax_percentage == 0.0
+
+
+def test_settings_rejects_tax_percentage_with_more_than_four_decimals(settings_client, settings_app):
+    """Tax percentage should reject values with precision beyond 4 decimals."""
+    response = settings_client.post(
+        "/settings",
+        data={
+            "action": "update_business",
+            "active_tab": "business",
+            "shop_name": "Northside Auto",
+            "shop_phone": "",
+            "shop_email": "",
+            "shop_address": "",
+            "tax_percentage": "8.12345",
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 200
+    assert b"Tax percentage can have up to 4 decimal places." in response.data
+
+    with settings_app.app_context():
+        settings = BusinessSettings.query.first()
+        assert settings is not None
+        assert settings.tax_percentage == 0.0
 
 
 def test_branding_context_uses_shop_name_and_initials_fallback(settings_app):

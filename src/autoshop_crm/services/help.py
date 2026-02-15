@@ -35,25 +35,34 @@ class _HelpArticleSource(HelpArticleMeta):
     filename: str
 
 
-HELP_AUDIENCES: tuple[str, ...] = ("Staff", "Admin", "Developer")
+HELP_AUDIENCES: tuple[str, ...] = ("Staff", "Admin")
 
 HELP_ARTICLE_REGISTRY: dict[str, _HelpArticleSource] = {
+    "usage-guide": _HelpArticleSource(
+        slug="usage-guide",
+        title="Usage Guide",
+        summary="End-to-end daily usage for customer intake, vehicle tracking, and job completion.",
+        audience=("Staff", "Admin"),
+        updated_at="2026-02-15",
+        related_links=(("Daily Workflows", "/help/daily-workflows"), ("Common Problems", "/help/common-problems")),
+        filename="usage-guide.md",
+    ),
     "getting-started": _HelpArticleSource(
         slug="getting-started",
         title="Getting Started",
-        summary="Sign in and complete your first customer-to-work-order flow.",
+        summary="Sign in, learn navigation, and complete your first record flow.",
         audience=("Staff", "Admin"),
         updated_at="2026-02-15",
-        related_links=(("Daily Workflows", "/help/daily-workflows"),),
+        related_links=(("Usage Guide", "/help/usage-guide"), ("Daily Workflows", "/help/daily-workflows")),
         filename="getting-started.md",
     ),
     "daily-workflows": _HelpArticleSource(
         slug="daily-workflows",
         title="Daily Workflows",
-        summary="Step-by-step customer, vehicle, and job updates.",
+        summary="Role-based routines for front desk and admin operations.",
         audience=("Staff", "Admin"),
         updated_at="2026-02-15",
-        related_links=(("Common Problems", "/help/common-problems"),),
+        related_links=(("Usage Guide", "/help/usage-guide"), ("Common Problems", "/help/common-problems")),
         filename="daily-workflows.md",
     ),
     "common-problems": _HelpArticleSource(
@@ -62,16 +71,16 @@ HELP_ARTICLE_REGISTRY: dict[str, _HelpArticleSource] = {
         summary="Fast fixes for login, permissions, and duplicates.",
         audience=("Staff", "Admin"),
         updated_at="2026-02-15",
-        related_links=(("Getting Started", "/help/getting-started"),),
+        related_links=(("Usage Guide", "/help/usage-guide"), ("Getting Started", "/help/getting-started")),
         filename="common-problems.md",
     ),
     "admin-setup": _HelpArticleSource(
         slug="admin-setup",
         title="Admin Setup Checklist",
-        summary="First-run setup steps for owners and admins.",
-        audience=("Admin", "Developer"),
+        summary="In-app first-run checklist for owners and admins after deployment is complete.",
+        audience=("Admin",),
         updated_at="2026-02-15",
-        related_links=(("Users and Permissions", "/help/users-permissions"),),
+        related_links=(("Users and Permissions", "/help/users-permissions"), ("Settings and Branding", "/help/settings-branding")),
         filename="admin-setup.md",
     ),
     "users-permissions": _HelpArticleSource(
@@ -80,8 +89,17 @@ HELP_ARTICLE_REGISTRY: dict[str, _HelpArticleSource] = {
         summary="Create users, assign roles, and apply least privilege.",
         audience=("Admin",),
         updated_at="2026-02-15",
-        related_links=(("Admin Setup Checklist", "/help/admin-setup"),),
+        related_links=(("Admin Setup Checklist", "/help/admin-setup"), ("Settings and Branding", "/help/settings-branding")),
         filename="users-permissions.md",
+    ),
+    "settings-branding": _HelpArticleSource(
+        slug="settings-branding",
+        title="Settings and Branding",
+        summary="Manage business profile details and visual theme settings.",
+        audience=("Admin",),
+        updated_at="2026-02-15",
+        related_links=(("Users and Permissions", "/help/users-permissions"),),
+        filename="settings-branding.md",
     ),
 }
 

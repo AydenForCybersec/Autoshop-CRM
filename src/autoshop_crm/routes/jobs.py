@@ -3,15 +3,15 @@
 from datetime import datetime
 
 from flask.typing import ResponseReturnValue
-from flask import Blueprint, flash, request, redirect, url_for
+from flask import Blueprint, flash, render_template, request, redirect, url_for
 
+from ..models.settings import BusinessSettings
 from ..services.authorization import require_permission
 from ..services.jobs import (
     create_job,
     create_job_expense,
     create_job_part,
     get_job,
-    update_job_cost,
     update_job_status,
 )
 from ..services.dates import parse_optional_datetime
@@ -25,7 +25,6 @@ def create() -> ResponseReturnValue:
     """Create a job and redirect back to the parent vehicle page."""
     vehicle_id = request.form.get("vehicle_id", type=int)
     description = request.form.get("description", "").strip()
-    cost_raw = request.form.get("cost", "").strip()
     created_at_raw = request.form.get("created_at", "").strip()
 
     if not vehicle_id:
@@ -38,16 +37,10 @@ def create() -> ResponseReturnValue:
         flash(str(exc))
         return redirect(url_for("vehicles.vehicle_detail", vehicle_id=vehicle_id))
 
-    try:
-        cost = float(cost_raw) if cost_raw else None
-    except ValueError:
-        flash("Cost must be a valid number.", "error")
-        return redirect(url_for("vehicles.vehicle_detail", vehicle_id=vehicle_id))
-
     job = create_job(
         vehicle_id=vehicle_id,
         description=description,
-        cost=cost,
+        cost=0.0,
         created_at=created_at,
     )
     return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
@@ -73,12 +66,30 @@ def add_part(job_id: int) -> ResponseReturnValue:
     job = get_job(job_id)
     part_name = request.form.get("part_name", "").strip()
     supplier = request.form.get("supplier", "").strip()
+    part_price_raw = request.form.get("part_price", "").strip()
+    labor_cost_raw = request.form.get("labor_cost", "").strip()
     notes = request.form.get("notes", "").strip()
     purchased_on_raw = request.form.get("purchased_on", "").strip()
     warranty_years_raw = request.form.get("warranty_years", "").strip()
 
     if not part_name:
         flash("Part name is required.", "error")
+        return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
+
+    try:
+        part_price = float(part_price_raw) if part_price_raw else 0.0
+    except ValueError:
+        flash("Part price must be a valid number.", "error")
+        return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
+
+    try:
+        labor_cost = float(labor_cost_raw) if labor_cost_raw else 0.0
+    except ValueError:
+        flash("Labor cost must be a valid number.", "error")
+        return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
+
+    if part_price < 0 or labor_cost < 0:
+        flash("Part price and labor cost cannot be negative.", "error")
         return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
 
     purchased_on = None
@@ -104,6 +115,8 @@ def add_part(job_id: int) -> ResponseReturnValue:
             job=job,
             part_name=part_name,
             supplier=supplier or None,
+            part_price=part_price,
+            labor_cost=labor_cost,
             warranty_years=warranty_years,
             purchased_on=purchased_on,
             notes=notes or None,
@@ -169,30 +182,34 @@ def add_expense(job_id: int) -> ResponseReturnValue:
 @jobs_bp.route("/<int:job_id>/cost", methods=["POST"])
 @require_permission("manage_jobs")
 def edit_cost(job_id: int) -> ResponseReturnValue:
-    """Edit the total cost recorded for a job."""
+    """Reject manual cost edits because total cost is auto-calculated."""
     job = get_job(job_id)
-    cost_raw = request.form.get("cost", "").strip()
-
-    if not cost_raw:
-        try:
-            update_job_cost(job, None)
-        except ValueError as exc:
-            flash(str(exc), "error")
-            return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
-        flash("Job total cost cleared.", "success")
-        return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
-
-    try:
-        cost = float(cost_raw)
-    except ValueError:
-        flash("Cost must be a valid number.", "error")
-        return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
-
-    try:
-        update_job_cost(job, cost)
-    except ValueError as exc:
-        flash(str(exc), "error")
-        return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
-
-    flash("Job total cost updated.", "success")
+    flash("Job total cost is calculated automatically from parts and labor.", "info")
     return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
+
+
+@jobs_bp.route("/<int:job_id>/invoice")
+@require_permission("view_vehicles")
+def invoice(job_id: int) -> ResponseReturnValue:
+    """Render customer-facing printable invoice for a job."""
+    job = get_job(job_id)
+    settings = BusinessSettings.query.first()
+    tax_percentage = float(settings.tax_percentage if settings and settings.tax_percentage is not None else 0.0)
+    parts_total = float(sum((part.part_price or 0.0) for part in job.parts))
+    labor_total = float(sum((part.labor_cost or 0.0) for part in job.parts))
+    subtotal = job.invoice_subtotal
+    tax_amount = job.invoice_tax(tax_percentage)
+    total = subtotal + tax_amount
+    return render_template(
+        "jobs/invoice.html",
+        job=job,
+        vehicle=job.vehicle,
+        customer=job.vehicle.customer if job.vehicle else None,
+        settings=settings,
+        tax_percentage=tax_percentage,
+        parts_total=parts_total,
+        labor_total=labor_total,
+        subtotal=subtotal,
+        tax_amount=tax_amount,
+        total=total,
+    )

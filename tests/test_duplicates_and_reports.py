@@ -100,9 +100,11 @@ def test_backdated_job_and_reporting_exports(client, app):
     )
     assert create_job_response.status_code == 200
 
+    job_id = None
     with app.app_context():
         job = Job.query.first()
         assert job is not None
+        job_id = job.id
         assert job.created_at.year == 2020
         assert job.created_at.month == 1
         assert job.created_at.day == 1
@@ -110,6 +112,8 @@ def test_backdated_job_and_reporting_exports(client, app):
             job=job,
             part_name="Front Brake Pads",
             supplier="OEM Supply",
+            part_price=240.0,
+            labor_cost=80.0,
             warranty_years=2,
             notes="Parts warranty validated at pickup.",
         )
@@ -118,6 +122,7 @@ def test_backdated_job_and_reporting_exports(client, app):
         settings.shop_phone = "(555) 000-1212"
         settings.shop_email = "service@northside.test"
         settings.shop_address = "123 Service Ln, Detroit, MI"
+        settings.tax_percentage = 7.5
         settings.shop_logo = "uploads/logos/test-logo.png"
         logo_path = Path(app.static_folder) / settings.shop_logo
         logo_path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,12 +143,32 @@ def test_backdated_job_and_reporting_exports(client, app):
     assert "service@northside.test" in pdf_text
     assert "Warranty Coverage Summary" in pdf_text
     assert "Front Brake Pads" in pdf_text
+    assert "OEM Supply" not in pdf_text
     assert b"/Subtype /Image" in pdf_response.data
     assert b"/Im1" in pdf_response.data
 
     accounting_response = client.get("/accounting/")
     assert accounting_response.status_code == 200
+    assert b"Completed Parts Revenue" in accounting_response.data
+    assert b"Completed Labor Revenue" in accounting_response.data
+    assert b"Parts $240.00" in accounting_response.data
+    assert b"Labor $80.00" in accounting_response.data
+    assert b"Tax $24.00" in accounting_response.data
+    assert b"Total $344.00" in accounting_response.data
 
     csv_response = client.get("/accounting/jobs.csv")
     assert csv_response.status_code == 200
     assert csv_response.mimetype == "text/csv"
+    csv_text = csv_response.data.decode("utf-8")
+    assert "parts_total,labor_total,subtotal,tax_amount,total_with_tax" in csv_text
+    assert ",240.0,80.0,320.0,24.0,344.0," in csv_text
+
+    assert job_id is not None
+    invoice_response = client.get(f"/jobs/{job_id}/invoice")
+    assert invoice_response.status_code == 200
+    assert b"Invoice" in invoice_response.data
+    assert b"Front Brake Pads" in invoice_response.data
+    assert b"OEM Supply" not in invoice_response.data
+    assert b"$320.00" in invoice_response.data  # part + labor subtotal
+    assert b"$24.00" in invoice_response.data  # tax at 7.5%
+    assert b"$344.00" in invoice_response.data

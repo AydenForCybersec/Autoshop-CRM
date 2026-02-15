@@ -1,40 +1,28 @@
 # Documentation Index
 
 ## Who this is for
-- Shop staff who need simple day-to-day instructions.
-- Admins/owners who handle setup, users, and business settings.
-- Developers who maintain and deploy the app.
+- Developers and technical operators who maintain, deploy, and troubleshoot the app.
 
 ## Before you start
-- Confirm your role: Staff, Admin, or Developer.
-- Use the matching section below first.
+- Confirm whether your task requires command-line usage or repository/file changes.
+- If it does, use `/docs`.
+- If it does not, use the in-app Help Center at `/help`.
 
 ## Step-by-step navigation
-1. Staff: open `docs/user-guide/getting-started.md`.
-2. Admins: open `docs/admin-guide/initial-setup.md`.
-3. Developers: open `docs/developer-guide/local-development.md`.
-4. For exact variables and commands, use `docs/reference/`.
+1. Start with `docs/developer-guide/local-development.md`.
+2. Use `docs/reference/` for exact commands, variables, and script behavior.
+3. Use `docs/developer-guide/deployment.md` for release and server operations.
+4. For end-user workflows, open the web app Help Center (`/help`).
 
 ## If this fails
-- If instructions seem too technical, read `docs/policies/doc-writing-style.md` and report unclear sections in an issue.
-- If a link is outdated, start from this index and follow the new paths.
+- If docs include non-technical usage guidance, move that guidance to `src/autoshop_crm/help_content/`.
+- If a link is outdated, start from this index and follow current section paths.
 
 ## Done when
-- You can find your role-specific guide in under 30 seconds.
-- You can complete your next task without opening unrelated technical docs.
+- You can find command-line or file-modification guidance in `/docs` only.
+- You can find non-technical usage guidance in `/help` only.
 
 ## Sections
-
-### User Guide (Staff)
-- `docs/user-guide/getting-started.md`
-- `docs/user-guide/daily-workflows.md`
-- `docs/user-guide/common-problems.md`
-
-### Admin Guide (Owners/Admins)
-- `docs/admin-guide/initial-setup.md`
-- `docs/admin-guide/users-roles-permissions.md`
-- `docs/admin-guide/settings-branding.md`
-- `docs/admin-guide/backups-and-recovery.md`
 
 ### Developer Guide
 - `docs/developer-guide/architecture.md`
@@ -52,6 +40,3 @@
 
 ### Policy
 - `docs/policies/doc-writing-style.md`
-
-### Legacy Redirects
-- `docs/legacy-pages.md`

@@ -1,3 +1,0 @@
-FLASK_APP=autoshop_crm:create_app
-FLASK_ENV=development
-PYTHONPATH=src

@@ -78,6 +78,8 @@ def create_job_part(
     job: Job,
     part_name: str,
     supplier: str | None = None,
+    part_price: float | None = None,
+    labor_cost: float | None = None,
     warranty_years: int | None = None,
     purchased_on: date | None = None,
     notes: str | None = None,
@@ -94,12 +96,16 @@ def create_job_part(
         job_id=job.id,
         part_name=part_name.strip(),
         supplier=normalized_supplier,
+        part_price=float(part_price or 0.0),
+        labor_cost=float(labor_cost or 0.0),
         warranty_years=warranty_years,
         purchased_on=effective_purchased_on,
         warranty_expires_on=expires_on,
         notes=normalized_notes,
     )
     db.session.add(part)
+    db.session.flush()
+    job.cost = job.invoice_subtotal
     db.session.commit()
     return part
 

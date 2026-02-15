@@ -144,6 +144,35 @@ def test_update_job_cost(app):
     assert job.cost == 425.5
 
 
+def test_monetary_values_round_up_to_nearest_cent(app):
+    """Persisted monetary values should always round up to the nearest cent."""
+    customer = create_customer("Rounding Customer")
+    vehicle = create_vehicle(customer.id, "Toyota", "Corolla")
+    job = create_job(vehicle.id, "Rounding check", cost=100.001)
+
+    assert job.cost == 100.01
+
+    update_job_cost(job, 425.501)
+    assert job.cost == 425.51
+
+    part = create_job_part(
+        job=job,
+        part_name="Seal Kit",
+        part_price=10.001,
+        labor_cost=20.0001,
+    )
+    assert part.part_price == 10.01
+    assert part.labor_cost == 20.01
+    assert job.cost == 30.02
+
+    expense = create_job_expense(
+        job=job,
+        description="Shop supplies",
+        amount=1.001,
+    )
+    assert expense.amount == 1.01
+
+
 def test_update_job_cost_rejects_negative(app):
     """Negative total cost should be rejected."""
     customer = create_customer("Negative Cost Customer")
@@ -156,3 +185,18 @@ def test_update_job_cost_rejects_negative(app):
         pass
     else:
         raise AssertionError("Expected ValueError for negative total cost")
+
+
+def test_job_invoice_totals_from_part_price_and_labor(app):
+    """Invoice totals should be based on per-part price and labor only."""
+    customer = create_customer("Invoice Customer")
+    vehicle = create_vehicle(customer.id, "Subaru", "Outback")
+    job = create_job(vehicle.id, "Front-end repair")
+
+    create_job_part(job=job, part_name="Control Arm", part_price=200.0, labor_cost=75.0)
+    create_job_part(job=job, part_name="Ball Joint", part_price=120.0, labor_cost=55.0)
+
+    assert round(job.cost or 0.0, 2) == 450.00
+    assert round(job.invoice_subtotal, 2) == 450.00
+    assert round(job.invoice_tax(8.0), 2) == 36.00
+    assert round(job.invoice_total(8.0), 2) == 486.00

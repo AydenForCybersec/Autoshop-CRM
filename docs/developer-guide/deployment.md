@@ -16,11 +16,11 @@ Developers or operators deploying production.
 5. Run Gunicorn behind reverse proxy under a dedicated non-root service user.
 6. Validate login, dashboard, customers, and settings pages.
 7. Run the deploy helper for repeatable GitHub-based updates:
-   - `scripts/deploy_from_github.sh --remote origin --branch <branch>`
+   - `python scripts/autoshopctl.py deploy --remote origin --branch <branch>`
 8. Keep update manager disabled unless explicitly needed (`UPDATE_ENABLED=false` default in production).
 9. If enabling in-app updates, restrict post commands:
-   - `UPDATE_ALLOWED_COMMAND_PREFIXES=./scripts/deploy_from_github.sh`
-   - `UPDATE_POST_UPDATE_COMMANDS=./scripts/deploy_from_github.sh --skip-pull`
+   - `UPDATE_ALLOWED_COMMAND_PREFIXES=./scripts/autoshopctl.py`
+   - `UPDATE_POST_UPDATE_COMMANDS=./scripts/autoshopctl.py deploy --skip-pull`
 
 ## If this fails
 - App fails to boot: inspect service logs and env file.
@@ -31,4 +31,4 @@ Developers or operators deploying production.
 ## Done when
 - Service is healthy after restart.
 - Core pages and workflows are operational.
-- `scripts/deploy_from_github.sh` completes without errors.
+- `python scripts/autoshopctl.py deploy` completes without errors.

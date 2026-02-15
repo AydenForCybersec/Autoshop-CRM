@@ -4,18 +4,15 @@ Autoshop CRM is a shop management app for customer records, vehicle history, wor
 
 ## Start Here
 
-- Non-technical staff: `docs/user-guide/getting-started.md`
-- Admins and owners: `docs/admin-guide/initial-setup.md`
-- Developers: `docs/developer-guide/local-development.md`
-- Full docs map: `docs/index.md`
+- Non-technical staff/admin usage: open in-app Help Center at `/help`
+- Developers and technical operators: `docs/developer-guide/local-development.md`
+- Technical docs map: `docs/index.md`
 
 ## Quick Run
 
 ```zsh
-cp .env.example .env
-export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
-flask --app autoshop_crm:create_app db upgrade
-flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
+python scripts/autoshopctl.py setup --mode dev
+flask --app run.py run --host=0.0.0.0 --port=5000
 ```
 
 ## In-App Help Center
@@ -26,6 +23,7 @@ When the server is running, authenticated users can open:
 - `GET /help/<slug>` for help articles
 
 The in-app Help content is curated from repository documentation and is designed for non-technical users.
+Repository `/docs` content is reserved for command-line, deployment, and file-modification documentation.
 
 ## Testing
 

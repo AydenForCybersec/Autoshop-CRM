@@ -307,6 +307,39 @@ a {
     gap: 0.6rem;
 }
 
+.job-collapsible {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.job-summary {
+    list-style: none;
+    cursor: pointer;
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.7rem;
+}
+
+.job-summary::-webkit-details-marker {
+    display: none;
+}
+
+.job-summary-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.job-collapsible-body {
+    border-top: 1px solid var(--line);
+    padding: 0.7rem;
+    display: grid;
+    gap: 0.6rem;
+}
+
 .job-parts {
     border-top: 1px solid var(--line);
     padding-top: 0.6rem;
@@ -809,7 +842,8 @@ select:focus {
     }
 
     .job-main,
-    .job-sub {
+    .job-sub,
+    .job-summary-main {
         flex-direction: column;
         align-items: flex-start;
     }
