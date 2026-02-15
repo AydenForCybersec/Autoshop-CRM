@@ -1,0 +1,53 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Potential Duplicate Customer | {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-panel compact">
+    <p class="eyebrow">Duplicate Check</p>
+    <h1>Potential duplicate customer found</h1>
+    <p class="subcopy">Choose whether to use/merge an existing customer or add this as a new entry.</p>
+</section>
+
+<section class="layout-two-col">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Possible Matches</h2>
+            <span class="chip">{{ duplicates|length }} found</span>
+        </div>
+        <form method="post" action="{{ url_for('customers.create') }}" class="form-grid">
+            <input type="hidden" name="name" value="{{ pending.name }}">
+            <input type="hidden" name="email" value="{{ pending.email }}">
+            <input type="hidden" name="phone" value="{{ pending.phone }}">
+            <input type="hidden" name="created_at" value="{{ pending.created_at }}">
+
+            <label class="field">
+                <span>Select Existing Customer</span>
+                <select name="selected_customer_id" required>
+                    {% for customer in duplicates %}
+                        <option value="{{ customer.id }}">
+                            #{{ customer.id }} - {{ customer.name }} - {{ customer.email or "No email" }} - {{ customer.phone or "No phone" }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <button type="submit" class="btn btn-secondary" name="duplicate_action" value="use_existing">Use Existing Customer</button>
+            <button type="submit" class="btn btn-primary" name="duplicate_action" value="merge_existing">Merge New Data into Existing</button>
+            <button type="submit" class="btn btn-secondary" name="duplicate_action" value="add_new">Add as New Customer Anyway</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Pending New Entry</h2>
+        </div>
+        <ul class="entity-list">
+            <li class="entity-item"><span class="entity-title">Name</span><span class="entity-meta">{{ pending.name }}</span></li>
+            <li class="entity-item"><span class="entity-title">Email</span><span class="entity-meta">{{ pending.email or "Not provided" }}</span></li>
+            <li class="entity-item"><span class="entity-title">Phone</span><span class="entity-meta">{{ pending.phone or "Not provided" }}</span></li>
+            <li class="entity-item"><span class="entity-title">Entry Date</span><span class="entity-meta">{{ pending.created_at or "Now" }}</span></li>
+        </ul>
+    </article>
+</section>
+{% endblock %}

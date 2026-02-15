@@ -24,10 +24,15 @@ def login_view() -> ResponseReturnValue:
         return redirect(url_for("dashboard.index"))
 
     if request.method == "POST":
-        if login(request.form["username"], request.form["password"]):
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        user = User.query.filter_by(username=username).first()
+        if user and not user.is_active:
+            flash("This account is disabled. Contact an administrator.")
+        elif login(username, password):
             return redirect(url_for("dashboard.index"))
-
-        flash("Invalid username or password")
+        else:
+            flash("Invalid username or password")
 
     return render_template("auth/login.html")
 
@@ -104,7 +109,7 @@ def setup_admin() -> ResponseReturnValue:
                 setup_business_name=business_name,
             )
 
-        user = User(username=username)
+        user = User(username=username, role="admin")
         user.set_password(password)
 
         engine = db.session.get_bind()

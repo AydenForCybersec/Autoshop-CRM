@@ -3,6 +3,7 @@ instance/
 *.pyc
 __pycache__/
 venv/
+.venv/
 .env.local
 *.log
 uploads/

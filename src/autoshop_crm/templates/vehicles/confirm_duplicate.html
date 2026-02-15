@@ -1,0 +1,57 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Potential Duplicate Vehicle | {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-panel compact">
+    <p class="eyebrow">Duplicate Check</p>
+    <h1>Potential duplicate vehicle found</h1>
+    <p class="subcopy">Use/merge an existing vehicle record or continue adding a new one.</p>
+</section>
+
+<section class="layout-two-col">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Possible Matches</h2>
+            <span class="chip">{{ duplicates|length }} found</span>
+        </div>
+        <form method="post" action="{{ url_for('vehicles.create') }}" class="form-grid">
+            <input type="hidden" name="customer_id" value="{{ pending.customer_id }}">
+            <input type="hidden" name="make" value="{{ pending.make }}">
+            <input type="hidden" name="model" value="{{ pending.model }}">
+            <input type="hidden" name="year" value="{{ pending.year }}">
+            <input type="hidden" name="vin" value="{{ pending.vin }}">
+            <input type="hidden" name="license_plate" value="{{ pending.license_plate }}">
+            <input type="hidden" name="created_at" value="{{ pending.created_at }}">
+
+            <label class="field">
+                <span>Select Existing Vehicle</span>
+                <select name="selected_vehicle_id" required>
+                    {% for vehicle in duplicates %}
+                        <option value="{{ vehicle.id }}">
+                            #{{ vehicle.id }} - {{ vehicle.year or "Year N/A" }} {{ vehicle.make }} {{ vehicle.model }} - VIN {{ vehicle.vin or "N/A" }} - Plate {{ vehicle.license_plate or "N/A" }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <button type="submit" class="btn btn-secondary" name="duplicate_action" value="use_existing">Use Existing Vehicle</button>
+            <button type="submit" class="btn btn-primary" name="duplicate_action" value="merge_existing">Merge New Data into Existing</button>
+            <button type="submit" class="btn btn-secondary" name="duplicate_action" value="add_new">Add as New Vehicle Anyway</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Pending New Entry</h2>
+        </div>
+        <ul class="entity-list">
+            <li class="entity-item"><span class="entity-title">Make/Model</span><span class="entity-meta">{{ pending.make }} {{ pending.model }}</span></li>
+            <li class="entity-item"><span class="entity-title">Year</span><span class="entity-meta">{{ pending.year or "Not provided" }}</span></li>
+            <li class="entity-item"><span class="entity-title">VIN</span><span class="entity-meta">{{ pending.vin or "Not provided" }}</span></li>
+            <li class="entity-item"><span class="entity-title">Plate</span><span class="entity-meta">{{ pending.license_plate or "Not provided" }}</span></li>
+            <li class="entity-item"><span class="entity-title">Entry Date</span><span class="entity-meta">{{ pending.created_at or "Now" }}</span></li>
+        </ul>
+    </article>
+</section>
+{% endblock %}

@@ -6,18 +6,27 @@
 {% set fv = form_values or {} %}
 <section class="hero-panel compact">
     <p class="eyebrow">Configuration</p>
-    <h1>Shop Settings</h1>
-    <p class="subcopy">Update branding, contact details, dashboard behavior, and color theme.</p>
+    <h1>Settings Control Center</h1>
+    <p class="subcopy">Manage business identity, theme, users, and granular permission access.</p>
 </section>
 
+<nav class="settings-tabs" aria-label="Settings sections">
+    <a class="settings-tab {% if active_tab == 'business' %}is-active{% endif %}" href="{{ url_for('dashboard.settings', tab='business') }}">Business</a>
+    <a class="settings-tab {% if active_tab == 'theme' %}is-active{% endif %}" href="{{ url_for('dashboard.settings', tab='theme') }}">Theme</a>
+    <a class="settings-tab {% if active_tab == 'users' %}is-active{% endif %}" href="{{ url_for('dashboard.settings', tab='users') }}">Users</a>
+    <a class="settings-tab {% if active_tab == 'permissions' %}is-active{% endif %}" href="{{ url_for('dashboard.settings', tab='permissions') }}">Permissions</a>
+</nav>
+
+{% if active_tab == "business" %}
 <form method="post" enctype="multipart/form-data">
-    <section class="layout-two-col">
-        <article class="panel">
-            <div class="panel-head">
-                <h2>Business Profile</h2>
-                <span class="chip">Branding</span>
-            </div>
-            <div class="form-grid">
+    <input type="hidden" name="action" value="update_business">
+    <input type="hidden" name="active_tab" value="business">
+    <section class="panel">
+        <div class="panel-head">
+            <h2>Business Profile</h2>
+            <span class="chip">Branding</span>
+        </div>
+        <div class="form-grid">
             <label class="field">
                 <span>Shop Name</span>
                 <input type="text" name="shop_name" value="{{ fv.get('shop_name', settings.shop_name) }}" required>
@@ -42,98 +51,291 @@
                 <span>Upload New Logo</span>
                 <input type="file" name="business_logo" accept=".png,.jpg,.jpeg,.webp,.gif,.svg">
             </label>
+
+            <button type="submit" class="btn btn-primary">Save Business Profile</button>
+        </div>
+    </section>
+</form>
+{% endif %}
+
+{% if active_tab == "theme" %}
+{% if can('manage_theme') %}
+<form method="post">
+    <input type="hidden" name="action" value="update_theme">
+    <input type="hidden" name="active_tab" value="theme">
+    <section class="layout-two-col">
+        <article class="panel">
+            <div class="panel-head">
+                <h2>Theme Tokens</h2>
+                <span class="chip">UI Preferences</span>
+            </div>
+            <div class="form-grid">
+                <label class="field">
+                    <span>Primary Color</span>
+                    <input class="theme-token" type="color" data-var="--brand" name="primary_color" value="{{ fv.get('primary_color', preferences.primary_color) }}">
+                </label>
+
+                <label class="field">
+                    <span>Accent Color</span>
+                    <input class="theme-token" type="color" data-var="--highlight" name="accent_color" value="{{ fv.get('accent_color', preferences.accent_color) }}">
+                </label>
+
+                <label class="field">
+                    <span>Background Color</span>
+                    <input class="theme-token" type="color" data-var="--bg" name="background_color" value="{{ fv.get('background_color', preferences.background_color) }}">
+                </label>
+
+                <label class="field">
+                    <span>Panel Surface Color</span>
+                    <input class="theme-token" type="color" data-var="--surface" name="surface_color" value="{{ fv.get('surface_color', preferences.surface_color) }}">
+                </label>
+
+                <label class="field">
+                    <span>Text Color</span>
+                    <input class="theme-token" type="color" data-var="--text" name="text_color" value="{{ fv.get('text_color', preferences.text_color) }}">
+                </label>
+
+                <label class="field">
+                    <span>Muted Text Color</span>
+                    <input class="theme-token" type="color" data-var="--muted" name="muted_color" value="{{ fv.get('muted_color', preferences.muted_color) }}">
+                </label>
+
+                <label class="field">
+                    <span>Border/Line Color</span>
+                    <input class="theme-token" type="color" data-var="--line" name="line_color" value="{{ fv.get('line_color', preferences.line_color) }}">
+                </label>
+
+                <label class="field">
+                    <span>Success Color</span>
+                    <input class="theme-token" type="color" data-var="--success" name="success_color" value="{{ fv.get('success_color', preferences.success_color) }}">
+                </label>
+
+                <label class="field">
+                    <span>Warning Color</span>
+                    <input class="theme-token" type="color" data-var="--warning" name="warning_color" value="{{ fv.get('warning_color', preferences.warning_color) }}">
+                </label>
+
+                <label class="field">
+                    <span>Danger Color</span>
+                    <input class="theme-token" type="color" data-var="--danger" name="danger_color" value="{{ fv.get('danger_color', preferences.danger_color) }}">
+                </label>
+
+                <label class="field">
+                    <span>Recent Jobs on Dashboard</span>
+                    <input type="number" min="3" max="20" name="dashboard_jobs_limit" value="{{ fv.get('dashboard_jobs_limit', preferences.dashboard_jobs_limit) }}">
+                </label>
+
+                <label class="field">
+                    <span>Corner Radius (px)</span>
+                    <input class="theme-token-radius" type="number" min="6" max="28" name="radius_px" value="{{ fv.get('radius_px', preferences.radius_px) }}">
+                </label>
+
+                <button type="submit" class="btn btn-primary">Save Theme</button>
             </div>
         </article>
 
         <article class="panel">
-            <div class="panel-head">
-                <h2>Theme & Dashboard</h2>
-                <span class="chip">UI Preferences</span>
-            </div>
-            <div class="form-grid">
-            <label class="field">
-                <span>Primary Color</span>
-                <input type="color" name="primary_color" value="{{ fv.get('primary_color', preferences.primary_color) }}">
-            </label>
-
-            <label class="field">
-                <span>Accent Color</span>
-                <input type="color" name="accent_color" value="{{ fv.get('accent_color', preferences.accent_color) }}">
-            </label>
-
-            <label class="field">
-                <span>Background Color</span>
-                <input type="color" name="background_color" value="{{ fv.get('background_color', preferences.background_color) }}">
-            </label>
-
-            <label class="field">
-                <span>Panel Surface Color</span>
-                <input type="color" name="surface_color" value="{{ fv.get('surface_color', preferences.surface_color) }}">
-            </label>
-
-            <label class="field">
-                <span>Recent Jobs on Dashboard</span>
-                <input type="number" min="3" max="20" name="dashboard_jobs_limit" value="{{ fv.get('dashboard_jobs_limit', preferences.dashboard_jobs_limit) }}">
-            </label>
-
+            <h2>Live Preview</h2>
+            <p class="entity-meta">Adjust controls and verify the final look before saving.</p>
             <div class="theme-preview" id="theme-preview">
-                <p class="theme-preview-label">Theme preview</p>
                 <article class="theme-preview-card" id="theme-preview-card">
                     <p class="theme-preview-kicker">Service Operations</p>
-                    <h3 id="theme-preview-title">{{ fv.get('shop_name', settings.shop_name) }}</h3>
+                    <h3 id="theme-preview-title">{{ settings.shop_name }}</h3>
                     <p class="theme-preview-copy">Sample panel text and status chip using your selected colors.</p>
                     <div class="theme-preview-row">
-                        <span class="theme-preview-chip" id="theme-preview-chip">In Progress</span>
+                        <span class="status-badge status-completed">Completed</span>
+                        <span class="status-badge status-in_progress">In Progress</span>
+                    </div>
+                    <div class="theme-preview-row">
                         <button class="btn btn-primary" type="button">Primary Button</button>
+                        <button class="btn btn-secondary" type="button">Secondary Button</button>
                     </div>
                 </article>
-            </div>
-
-            <p class="entity-meta">The uploaded logo is also used as the site favicon.</p>
-            <button type="submit" class="btn btn-primary">Save Settings</button>
             </div>
         </article>
     </section>
 </form>
+{% else %}
+<section class="panel">
+    <p class="entity-meta">You do not have permission to edit theme settings.</p>
+</section>
+{% endif %}
+{% endif %}
+
+{% if active_tab == "users" %}
+{% if can('manage_users') %}
+<section class="layout-two-col">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Create User</h2>
+            <span class="chip">Access Accounts</span>
+        </div>
+        <form method="post" class="form-grid">
+            <input type="hidden" name="action" value="create_user">
+            <input type="hidden" name="active_tab" value="users">
+
+            <label class="field">
+                <span>Username</span>
+                <input type="text" name="new_username" required>
+            </label>
+
+            <label class="field">
+                <span>Role</span>
+                <select name="new_role">
+                    {% for role_key, role_label in roles.items() %}
+                        <option value="{{ role_key }}">{{ role_label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label class="field">
+                <span>Temporary Password</span>
+                <input type="password" name="new_password" minlength="8" required>
+            </label>
+
+            <button type="submit" class="btn btn-primary">Create User</button>
+        </form>
+    </article>
+
+    <article class="panel">
+        <h2>Current Users</h2>
+        <div class="form-grid">
+            {% for user in users %}
+                <section class="settings-user-card">
+                    <header>
+                        <strong>{{ user.username }}</strong>
+                        <span class="entity-meta">{{ roles.get(user.role_key, user.role_key|title) }}</span>
+                    </header>
+
+                    <form method="post" class="form-grid">
+                        <input type="hidden" name="action" value="update_user">
+                        <input type="hidden" name="active_tab" value="users">
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+
+                        <label class="field">
+                            <span>Role</span>
+                            <select name="role">
+                                {% for role_key, role_label in roles.items() %}
+                                    <option value="{{ role_key }}" {% if user.role_key == role_key %}selected{% endif %}>{{ role_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+
+                        <label class="check-row">
+                            <input type="checkbox" name="is_active" value="1" {% if user.is_active %}checked{% endif %}>
+                            <span>Account active</span>
+                        </label>
+
+                        <button type="submit" class="btn btn-secondary">Update User</button>
+                    </form>
+
+                    <form method="post" class="form-grid">
+                        <input type="hidden" name="action" value="reset_password">
+                        <input type="hidden" name="active_tab" value="users">
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <label class="field">
+                            <span>Reset Password</span>
+                            <input type="password" name="password" minlength="8" required>
+                        </label>
+                        <button type="submit" class="btn btn-secondary">Set New Password</button>
+                    </form>
+                </section>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+{% else %}
+<section class="panel">
+    <p class="entity-meta">You do not have permission to manage users.</p>
+</section>
+{% endif %}
+{% endif %}
+
+{% if active_tab == "permissions" %}
+{% if can('manage_permissions') %}
+<section class="panel">
+    <div class="panel-head">
+        <h2>Granular Permissions</h2>
+        <span class="chip">Fine Control</span>
+    </div>
+
+    <p class="entity-meta">Set exact capability access for each user. Admin always keeps full access.</p>
+
+    <div class="settings-permission-grid">
+        {% for user in users %}
+            <article class="settings-user-card">
+                <header>
+                    <strong>{{ user.username }}</strong>
+                    <span class="entity-meta">{{ roles.get(user.role_key, user.role_key|title) }}</span>
+                </header>
+
+                {% if user.role_key == "admin" %}
+                    <p class="entity-meta">Admin has all permissions and cannot be restricted.</p>
+                {% else %}
+                    {% set effective = user.get_effective_permissions() %}
+                    <form method="post" class="form-grid">
+                        <input type="hidden" name="action" value="update_permissions">
+                        <input type="hidden" name="active_tab" value="permissions">
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+
+                        <div class="permission-list">
+                            {% for permission in permissions %}
+                                <label class="check-row">
+                                    <input type="checkbox" name="permissions" value="{{ permission }}" {% if permission in effective %}checked{% endif %}>
+                                    <span>{{ permission_labels.get(permission, permission) }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+
+                        <button type="submit" class="btn btn-secondary">Save Permissions</button>
+                    </form>
+                {% endif %}
+            </article>
+        {% endfor %}
+    </div>
+</section>
+{% else %}
+<section class="panel">
+    <p class="entity-meta">You do not have permission to adjust user permissions.</p>
+</section>
+{% endif %}
+{% endif %}
 
 <script>
 (() => {
-    const primary = document.querySelector("input[name='primary_color']");
-    const accent = document.querySelector("input[name='accent_color']");
-    const background = document.querySelector("input[name='background_color']");
-    const surface = document.querySelector("input[name='surface_color']");
-    const card = document.getElementById("theme-preview-card");
-    const chip = document.getElementById("theme-preview-chip");
-    const title = document.getElementById("theme-preview-title");
-    const nameInput = document.querySelector("input[name='shop_name']");
-
-    if (!primary || !accent || !background || !surface || !card || !chip) {
+    const tokens = document.querySelectorAll(".theme-token");
+    const radiusInput = document.querySelector(".theme-token-radius");
+    if (!tokens.length) {
         return;
     }
 
     const apply = () => {
-        document.documentElement.style.setProperty("--brand", primary.value);
-        document.documentElement.style.setProperty("--brand-strong", primary.value);
-        document.documentElement.style.setProperty("--highlight", accent.value);
-        document.documentElement.style.setProperty("--bg", background.value);
-        document.documentElement.style.setProperty("--surface", surface.value);
+        tokens.forEach((input) => {
+            const cssVar = input.dataset.var;
+            if (!cssVar) {
+                return;
+            }
+            document.documentElement.style.setProperty(cssVar, input.value);
+        });
 
-        card.style.background = surface.value;
-        card.style.borderColor = primary.value + "55";
-        chip.style.background = accent.value + "33";
-        chip.style.color = primary.value;
+        const brand = document.querySelector("input[name='primary_color']");
+        if (brand) {
+            document.documentElement.style.setProperty("--brand-strong", brand.value);
+        }
+
+        if (radiusInput) {
+            const value = Number.parseInt(radiusInput.value, 10);
+            if (!Number.isNaN(value)) {
+                document.documentElement.style.setProperty("--radius", `${value}px`);
+                document.documentElement.style.setProperty("--radius-sm", `${Math.max(6, value - 6)}px`);
+            }
+        }
     };
 
-    [primary, accent, background, surface].forEach((input) => {
-        input.addEventListener("input", apply);
-    });
-
-    if (nameInput && title) {
-        nameInput.addEventListener("input", () => {
-            title.textContent = nameInput.value.trim() || "Your Shop";
-        });
+    tokens.forEach((input) => input.addEventListener("input", apply));
+    if (radiusInput) {
+        radiusInput.addEventListener("input", apply);
     }
-
     apply();
 })();
 </script>

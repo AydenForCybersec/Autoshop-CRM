@@ -14,7 +14,17 @@ from ..models.customer import Customer
 from ..models.job import Job
 from ..models.settings import BusinessSettings
 from ..models.ui_preference import AppPreference
+from ..models.user import User
 from ..models.vehicle import Vehicle
+from ..services.authorization import (
+    PERMISSIONS,
+    PERMISSION_LABELS,
+    ROLE_LABELS,
+    can_current_user,
+    normalize_role,
+    require_permission,
+    resolve_role_permissions,
+)
 from ..services.branding import save_business_logo
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -26,6 +36,7 @@ STATUS_LABELS = {
     "on_hold": "On Hold",
     "completed": "Completed",
 }
+SETTINGS_TABS = {"business", "theme", "users", "permissions"}
 
 
 def _is_valid_hex_color(value: str) -> bool:
@@ -51,7 +62,56 @@ def _get_or_create_preferences() -> AppPreference:
     return preferences
 
 
+def _ensure_settings_row() -> BusinessSettings:
+    """Return singleton business settings row, creating defaults if missing."""
+    settings = BusinessSettings.query.first()
+    if settings is None:
+        settings = BusinessSettings(shop_name="Autoshop CRM", setup_complete=False)
+        db.session.add(settings)
+        db.session.commit()
+    return settings
+
+
+def _active_tab() -> str:
+    """Return the currently requested settings tab."""
+    tab = request.args.get("tab", "business").strip().lower()
+    if tab in SETTINGS_TABS:
+        return tab
+    return "business"
+
+
+def _render_settings(
+    settings: BusinessSettings,
+    preferences: AppPreference,
+    *,
+    active_tab: str,
+    form_values: dict[str, str | int | None] | None = None,
+):
+    """Render settings page with shared context."""
+    users = User.query.order_by(User.created_at.asc(), User.id.asc()).all()
+    return render_template(
+        "settings/index.html",
+        settings=settings,
+        preferences=preferences,
+        users=users,
+        form_values=form_values or {},
+        active_tab=active_tab,
+        roles=ROLE_LABELS,
+        permission_labels=PERMISSION_LABELS,
+        permissions=PERMISSIONS,
+    )
+
+
+def _active_admin_count(excluding_user_id: int | None = None) -> int:
+    """Return count of enabled admin users."""
+    query = User.query.filter(User.role == "admin", User.is_active.is_(True))
+    if excluding_user_id is not None:
+        query = query.filter(User.id != excluding_user_id)
+    return query.count()
+
+
 @dashboard_bp.route("/")
+@require_permission("view_dashboard")
 def index() -> ResponseReturnValue:
     """Render the operational dashboard."""
     prefs = _get_or_create_preferences()
@@ -101,90 +161,231 @@ def index() -> ResponseReturnValue:
 
 
 @dashboard_bp.route("/settings", methods=["GET", "POST"])
+@require_permission("manage_settings")
 def settings() -> ResponseReturnValue:
-    """Render and update business + UI settings."""
-    settings = BusinessSettings.query.first()
-    if settings is None:
-        settings = BusinessSettings(shop_name="Autoshop CRM", setup_complete=False)
-        db.session.add(settings)
-        db.session.commit()
-
+    """Render and update business, users, permissions, and UI settings."""
+    settings = _ensure_settings_row()
     preferences = _get_or_create_preferences()
-    form_values: dict[str, str | int | None] = {}
+    active_tab = _active_tab()
 
     if request.method == "POST":
-        existing_shop_name = settings.shop_name
-        shop_name_input = request.form.get("shop_name", existing_shop_name).strip()
-        shop_phone = request.form.get("shop_phone", "").strip() or None
-        shop_email = request.form.get("shop_email", "").strip() or None
-        shop_address = request.form.get("shop_address", "").strip() or None
+        action = request.form.get("action", "").strip().lower()
+        requested_tab = request.form.get("active_tab", active_tab).strip().lower()
+        if requested_tab in SETTINGS_TABS:
+            active_tab = requested_tab
 
-        primary_color = request.form.get("primary_color", preferences.primary_color).strip() or preferences.primary_color
-        accent_color = request.form.get("accent_color", preferences.accent_color).strip() or preferences.accent_color
-        background_color = (
-            request.form.get("background_color", preferences.background_color).strip() or preferences.background_color
-        )
-        surface_color = request.form.get("surface_color", preferences.surface_color).strip() or preferences.surface_color
-        jobs_limit_raw = request.form.get("dashboard_jobs_limit", str(preferences.dashboard_jobs_limit)).strip()
+        if action == "update_business":
+            existing_shop_name = settings.shop_name
+            shop_name_input = request.form.get("shop_name", existing_shop_name).strip()
+            shop_phone = request.form.get("shop_phone", "").strip() or None
+            shop_email = request.form.get("shop_email", "").strip() or None
+            shop_address = request.form.get("shop_address", "").strip() or None
 
-        form_values = {
-            "shop_name": shop_name_input or existing_shop_name,
-            "shop_phone": shop_phone or "",
-            "shop_email": shop_email or "",
-            "shop_address": shop_address or "",
-            "primary_color": primary_color,
-            "accent_color": accent_color,
-            "background_color": background_color,
-            "surface_color": surface_color,
-            "dashboard_jobs_limit": jobs_limit_raw,
-        }
+            form_values = {
+                "shop_name": shop_name_input or existing_shop_name,
+                "shop_phone": shop_phone or "",
+                "shop_email": shop_email or "",
+                "shop_address": shop_address or "",
+            }
 
-        if not all(
-            _is_valid_hex_color(value)
-            for value in (primary_color, accent_color, background_color, surface_color)
-        ):
-            flash("Theme colors must be valid hex values like #1f7a4f.")
-            return render_template(
-                "settings/index.html", settings=settings, preferences=preferences, form_values=form_values
+            try:
+                uploaded_logo = save_business_logo(request.files.get("business_logo"), current_app.static_folder)
+            except ValueError as exc:
+                flash(str(exc))
+                return _render_settings(
+                    settings,
+                    preferences,
+                    active_tab=active_tab,
+                    form_values=form_values,
+                )
+
+            settings.shop_name = shop_name_input or existing_shop_name
+            settings.shop_phone = shop_phone
+            settings.shop_email = shop_email
+            settings.shop_address = shop_address
+            if uploaded_logo:
+                settings.shop_logo = uploaded_logo
+
+            db.session.commit()
+            flash("Business profile updated.")
+            return redirect(url_for("dashboard.settings", tab="business"))
+
+        if action == "update_theme":
+            if not can_current_user("manage_theme"):
+                flash("You do not have permission to modify theme settings.")
+                return redirect(url_for("dashboard.settings", tab="theme"))
+
+            color_fields = (
+                "primary_color",
+                "accent_color",
+                "background_color",
+                "surface_color",
+                "text_color",
+                "muted_color",
+                "line_color",
+                "success_color",
+                "warning_color",
+                "danger_color",
             )
+            form_values: dict[str, str | int | None] = {}
+            for field in color_fields:
+                current_value = getattr(preferences, field)
+                form_values[field] = request.form.get(field, current_value).strip() or current_value
 
-        try:
-            jobs_limit = int(jobs_limit_raw)
-        except ValueError:
-            flash("Dashboard jobs limit must be a number between 3 and 20.")
-            return render_template(
-                "settings/index.html", settings=settings, preferences=preferences, form_values=form_values
-            )
+            jobs_limit_raw = request.form.get("dashboard_jobs_limit", str(preferences.dashboard_jobs_limit)).strip()
+            radius_raw = request.form.get("radius_px", str(preferences.radius_px)).strip()
+            form_values["dashboard_jobs_limit"] = jobs_limit_raw
+            form_values["radius_px"] = radius_raw
 
-        if jobs_limit < 3 or jobs_limit > 20:
-            flash("Dashboard jobs limit must be between 3 and 20.")
-            return render_template(
-                "settings/index.html", settings=settings, preferences=preferences, form_values=form_values
-            )
+            if not all(_is_valid_hex_color(str(form_values[field])) for field in color_fields):
+                flash("Theme colors must be valid hex values like #1f7a4f.")
+                return _render_settings(
+                    settings,
+                    preferences,
+                    active_tab=active_tab,
+                    form_values=form_values,
+                )
 
-        try:
-            uploaded_logo = save_business_logo(request.files.get("business_logo"), current_app.static_folder)
-        except ValueError as exc:
-            flash(str(exc))
-            return render_template(
-                "settings/index.html", settings=settings, preferences=preferences, form_values=form_values
-            )
+            try:
+                jobs_limit = int(jobs_limit_raw)
+            except ValueError:
+                flash("Dashboard jobs limit must be a number between 3 and 20.")
+                return _render_settings(
+                    settings,
+                    preferences,
+                    active_tab=active_tab,
+                    form_values=form_values,
+                )
 
-        settings.shop_name = shop_name_input or existing_shop_name
-        settings.shop_phone = shop_phone
-        settings.shop_email = shop_email
-        settings.shop_address = shop_address
-        if uploaded_logo:
-            settings.shop_logo = uploaded_logo
+            if jobs_limit < 3 or jobs_limit > 20:
+                flash("Dashboard jobs limit must be between 3 and 20.")
+                return _render_settings(
+                    settings,
+                    preferences,
+                    active_tab=active_tab,
+                    form_values=form_values,
+                )
 
-        preferences.primary_color = primary_color
-        preferences.accent_color = accent_color
-        preferences.background_color = background_color
-        preferences.surface_color = surface_color
-        preferences.dashboard_jobs_limit = jobs_limit
+            try:
+                radius = int(radius_raw)
+            except ValueError:
+                flash("Corner radius must be a number between 6 and 28.")
+                return _render_settings(
+                    settings,
+                    preferences,
+                    active_tab=active_tab,
+                    form_values=form_values,
+                )
 
-        db.session.commit()
-        flash("Settings updated.")
-        return redirect(url_for("dashboard.settings"))
+            if radius < 6 or radius > 28:
+                flash("Corner radius must be between 6 and 28.")
+                return _render_settings(
+                    settings,
+                    preferences,
+                    active_tab=active_tab,
+                    form_values=form_values,
+                )
 
-    return render_template("settings/index.html", settings=settings, preferences=preferences, form_values=form_values)
+            for field in color_fields:
+                setattr(preferences, field, str(form_values[field]))
+            preferences.dashboard_jobs_limit = jobs_limit
+            preferences.radius_px = radius
+
+            db.session.commit()
+            flash("Theme and dashboard preferences updated.")
+            return redirect(url_for("dashboard.settings", tab="theme"))
+
+        if action == "create_user":
+            if not can_current_user("manage_users"):
+                flash("You do not have permission to create users.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+
+            username = request.form.get("new_username", "").strip()
+            password = request.form.get("new_password", "")
+            role = normalize_role(request.form.get("new_role"))
+
+            if not username:
+                flash("Username is required.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+            if len(password) < 8:
+                flash("Password must be at least 8 characters.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+            if User.query.filter_by(username=username).first() is not None:
+                flash("That username is already taken.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+
+            user = User(username=username, role=role)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            flash(f"User '{username}' created.")
+            return redirect(url_for("dashboard.settings", tab="users"))
+
+        if action == "update_user":
+            if not can_current_user("manage_users"):
+                flash("You do not have permission to update users.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+
+            user_id = request.form.get("user_id", type=int)
+            user = User.query.get_or_404(user_id)
+            role = normalize_role(request.form.get("role"))
+            is_active = bool(request.form.get("is_active"))
+
+            if user.role == "admin" and (role != "admin" or not is_active) and _active_admin_count(user.id) == 0:
+                flash("At least one active admin account is required.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+
+            user.role = role
+            user.is_active = is_active
+            if role == "admin":
+                user.permission_overrides = {}
+
+            db.session.commit()
+            flash(f"Updated user '{user.username}'.")
+            return redirect(url_for("dashboard.settings", tab="users"))
+
+        if action == "reset_password":
+            if not can_current_user("manage_users"):
+                flash("You do not have permission to reset passwords.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+
+            user_id = request.form.get("user_id", type=int)
+            password = request.form.get("password", "")
+            if len(password) < 8:
+                flash("Password must be at least 8 characters.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+
+            user = User.query.get_or_404(user_id)
+            user.set_password(password)
+            db.session.commit()
+            flash(f"Password updated for '{user.username}'.")
+            return redirect(url_for("dashboard.settings", tab="users"))
+
+        if action == "update_permissions":
+            if not can_current_user("manage_permissions"):
+                flash("You do not have permission to modify user permissions.")
+                return redirect(url_for("dashboard.settings", tab="permissions"))
+
+            user_id = request.form.get("user_id", type=int)
+            user = User.query.get_or_404(user_id)
+            if user.role == "admin":
+                flash("Admin permissions are always full-access.")
+                return redirect(url_for("dashboard.settings", tab="permissions"))
+
+            selected = set(request.form.getlist("permissions"))
+            base_permissions = resolve_role_permissions(user.role_key)
+            overrides: dict[str, bool] = {}
+            for permission in PERMISSIONS:
+                selected_enabled = permission in selected
+                base_enabled = permission in base_permissions
+                if selected_enabled != base_enabled:
+                    overrides[permission] = selected_enabled
+
+            user.permission_overrides = overrides
+            db.session.commit()
+            flash(f"Permission overrides updated for '{user.username}'.")
+            return redirect(url_for("dashboard.settings", tab="permissions"))
+
+        flash("Unknown settings action.")
+
+    return _render_settings(settings, preferences, active_tab=active_tab)

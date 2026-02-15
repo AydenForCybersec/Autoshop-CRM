@@ -1,0 +1,95 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Updates | {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-panel compact">
+    <p class="eyebrow">Maintenance</p>
+    <h1>Application Updates</h1>
+    <p class="subcopy">Check remote releases, apply safe fast-forward updates, and rollback if needed.</p>
+</section>
+
+{% if not status.enabled %}
+<section class="panel">
+    <p class="entity-meta">Update manager is currently disabled by configuration.</p>
+</section>
+{% else %}
+<section class="layout-two-col">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Update Status</h2>
+            <span class="chip">Git Source</span>
+        </div>
+
+        {% if status.error %}
+            <p class="entity-meta">Status check failed: {{ status.error }}</p>
+        {% else %}
+            <div class="form-grid">
+                <p class="entity-meta"><strong>Repository:</strong> <code>{{ status.repo_path }}</code></p>
+                <p class="entity-meta"><strong>Remote:</strong> {{ status.remote }}/{{ status.branch }}</p>
+                <p class="entity-meta"><strong>Current Commit:</strong> <code>{{ status.current_short_commit or "N/A" }}</code></p>
+                <p class="entity-meta"><strong>Latest Remote:</strong> <code>{{ status.latest_short_commit or "N/A" }}</code></p>
+                <p class="entity-meta"><strong>Pending Commits:</strong> {{ status.behind_by }}</p>
+                <p class="entity-meta"><strong>Local Changes:</strong> {% if status.dirty %}Yes{% else %}No{% endif %}</p>
+                <p class="entity-meta">
+                    <strong>Update Available:</strong>
+                    {% if status.has_update %}
+                        Yes
+                    {% else %}
+                        No
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+    </article>
+
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Actions</h2>
+            <span class="chip">Controlled</span>
+        </div>
+        <div class="form-grid">
+            <form method="post">
+                <input type="hidden" name="action" value="check">
+                <button type="submit" class="btn btn-secondary">Check for Updates</button>
+            </form>
+            <form method="post">
+                <input type="hidden" name="action" value="apply">
+                <button type="submit" class="btn btn-primary">Apply Latest Update</button>
+            </form>
+            <form method="post">
+                <input type="hidden" name="action" value="rollback_1">
+                <button type="submit" class="btn btn-secondary">Rollback 1 Update</button>
+            </form>
+            <form method="post">
+                <input type="hidden" name="action" value="rollback_2">
+                <button type="submit" class="btn btn-secondary">Rollback 2 Updates</button>
+            </form>
+        </div>
+    </article>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <h2>Rollback History</h2>
+        <span class="chip">Recovery</span>
+    </div>
+    {% if status.rollback_points %}
+        <ul class="entity-list">
+            {% for item in status.rollback_points %}
+                <li class="entity-item">
+                    <p class="entity-meta">
+                        <strong><code>{{ item.short_commit }}</code></strong>
+                        {% if item.timestamp_utc %}
+                            saved at {{ item.timestamp_utc }}
+                        {% endif %}
+                    </p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty-state">No rollback checkpoints saved yet. The first successful update will create one.</p>
+    {% endif %}
+</section>
+{% endif %}
+{% endblock %}

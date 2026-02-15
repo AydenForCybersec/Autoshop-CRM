@@ -2,13 +2,14 @@
 
 from sqlalchemy import inspect
 from flask import Flask, current_app, redirect, request, url_for
-from flask_login import current_user
+from flask_login import current_user, logout_user
 
 from .config import get_config
 from .extensions import db, migrate, login_manager
 from .models.settings import BusinessSettings
 from .models.ui_preference import AppPreference
 from .models.user import User
+from .services.authorization import ROLE_LABELS, can_current_user
 
 from .cli import register_commands
 
@@ -18,6 +19,9 @@ from .routes.vehicles import vehicles_bp
 from .routes.jobs import jobs_bp
 from .routes.auth import auth_bp
 from .routes.dashboard import dashboard_bp
+from .routes.accounting import accounting_bp
+from .routes.updates import updates_bp
+from .routes.help import help_bp
 
 
 def create_app() -> Flask:
@@ -38,12 +42,15 @@ def create_app() -> Flask:
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(updates_bp)
+    app.register_blueprint(accounting_bp, url_prefix="/accounting")
+    app.register_blueprint(help_bp)
     app.register_blueprint(customers_bp, url_prefix="/customers")
     app.register_blueprint(vehicles_bp, url_prefix="/vehicles")
     app.register_blueprint(jobs_bp, url_prefix="/jobs")
 
     @app.context_processor
-    def inject_branding() -> dict[str, str | None]:
+    def inject_branding() -> dict[str, object]:
         """Expose shop branding fields to all templates."""
         default_name = "Autoshop CRM"
         app_name = default_name
@@ -68,6 +75,14 @@ def create_app() -> Flask:
                     "--highlight": preferences.accent_color,
                     "--bg": preferences.background_color,
                     "--surface": preferences.surface_color,
+                    "--text": preferences.text_color,
+                    "--muted": preferences.muted_color,
+                    "--line": preferences.line_color,
+                    "--success": preferences.success_color,
+                    "--warning": preferences.warning_color,
+                    "--danger": preferences.danger_color,
+                    "--radius": f"{preferences.radius_px}px",
+                    "--radius-sm": f"{max(6, preferences.radius_px - 6)}px",
                 }
 
         initials = "".join(part[0] for part in app_name.split() if part).upper()[:2] or "AC"
@@ -77,6 +92,8 @@ def create_app() -> Flask:
             "app_favicon_url": app_favicon_url,
             "app_initials": initials,
             "theme_vars": theme_vars,
+            "can": can_current_user,
+            "role_labels": ROLE_LABELS,
         }
 
     @app.before_request
@@ -88,6 +105,8 @@ def create_app() -> Flask:
         endpoint = request.endpoint or ""
         if endpoint.startswith("static"):
             return None
+        if endpoint == "help.quick_start":
+            return None
 
         has_user = User.query.first() is not None
 
@@ -95,6 +114,10 @@ def create_app() -> Flask:
             return redirect(url_for("auth.setup_admin"))
 
         if has_user and not current_user.is_authenticated and endpoint != "auth.login_view":
+            return redirect(url_for("auth.login_view"))
+
+        if current_user.is_authenticated and not current_user.is_active:
+            logout_user()
             return redirect(url_for("auth.login_view"))
 
         return None

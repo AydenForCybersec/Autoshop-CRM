@@ -31,7 +31,7 @@ def seed_demo_data(username: str, password: str):
 
     user = User.query.filter_by(username=username).first()
     if not user:
-        user = User(username=username)
+        user = User(username=username, role="owner")
         user.set_password(password)
         db.session.add(user)
 

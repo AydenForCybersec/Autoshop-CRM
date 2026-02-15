@@ -1,0 +1,31 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{{ title }} | {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-panel compact">
+    <p class="eyebrow">Help Article</p>
+    <h1>{{ title }}</h1>
+    <p class="subcopy">{{ summary }}</p>
+    <div class="meta-row">
+        {% for item in audience %}
+            <span class="chip">{{ item }}</span>
+        {% endfor %}
+        <span class="chip">Updated {{ updated_at }}</span>
+    </div>
+</section>
+
+<section class="panel">
+    <article class="help-article-body">{{ content_html | safe }}</article>
+
+    {% if related_links %}
+        <hr class="help-separator">
+        <h2>Related</h2>
+        <ul class="help-related-list">
+            {% for label, href in related_links %}
+                <li><a href="{{ href }}">{{ label }}</a></li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</section>
+{% endblock %}

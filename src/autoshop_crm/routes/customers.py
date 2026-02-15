@@ -1,18 +1,23 @@
 """Customer-facing HTTP routes."""
 
 from flask.typing import ResponseReturnValue
-from flask import Blueprint, render_template, request, redirect, url_for
+from flask import Blueprint, flash, render_template, request, redirect, url_for
 
+from ..services.authorization import require_permission
 from ..services.customers import (
+    find_customer_duplicates,
     get_customers_paginated,
     get_customer,
     create_customer,
+    merge_customer_data,
 )
+from ..services.dates import parse_optional_datetime
 
 customers_bp = Blueprint("customers", __name__)
 
 
 @customers_bp.route("/")
+@require_permission("view_customers")
 def list_customers() -> ResponseReturnValue:
     """Render a paginated list of customers."""
     page = request.args.get("page", 1, type=int)
@@ -25,6 +30,7 @@ def list_customers() -> ResponseReturnValue:
     )
 
 @customers_bp.route("/<int:customer_id>")
+@require_permission("view_customers")
 def customer_detail(customer_id: int) -> ResponseReturnValue:
     """Render detail page for a single customer."""
     customer = get_customer(customer_id)
@@ -32,11 +38,52 @@ def customer_detail(customer_id: int) -> ResponseReturnValue:
 
 
 @customers_bp.route("/create", methods=["POST"])
+@require_permission("manage_customers")
 def create() -> ResponseReturnValue:
     """Create a customer from submitted form values."""
-    name = request.form["name"]
-    email = request.form.get("email")
-    phone = request.form.get("phone")
+    name = request.form["name"].strip()
+    email = request.form.get("email", "").strip() or None
+    phone = request.form.get("phone", "").strip() or None
+    created_at_raw = request.form.get("created_at", "").strip()
+    duplicate_action = request.form.get("duplicate_action", "").strip()
+    selected_customer_id = request.form.get("selected_customer_id", type=int)
 
-    create_customer(name, email, phone)
+    try:
+        created_at = parse_optional_datetime(created_at_raw)
+    except ValueError as exc:
+        flash(str(exc))
+        return redirect(url_for("customers.list_customers"))
+
+    duplicates = find_customer_duplicates(name=name, email=email, phone=phone)
+    if duplicates and not duplicate_action:
+        return render_template(
+            "customers/confirm_duplicate.html",
+            pending={"name": name, "email": email or "", "phone": phone or "", "created_at": created_at_raw},
+            duplicates=duplicates,
+        )
+
+    if duplicate_action in {"use_existing", "merge_existing"}:
+        if not selected_customer_id:
+            flash("Please select a customer to continue.")
+            return redirect(url_for("customers.list_customers"))
+
+        existing_customer = get_customer(selected_customer_id)
+        if duplicate_action == "merge_existing":
+            merge_customer_data(existing_customer, name=name, email=email, phone=phone, created_at=created_at)
+            flash("Customer data merged into existing record.")
+        else:
+            flash("Used existing customer record.")
+        return redirect(url_for("customers.customer_detail", customer_id=existing_customer.id))
+
+    if duplicate_action == "add_new" and email:
+        matching_email = next(
+            (customer for customer in duplicates if customer.email and customer.email.lower() == email.lower()),
+            None,
+        )
+        if matching_email:
+            flash("Email already exists on another customer. New customer created without email.")
+            email = None
+
+    create_customer(name, email, phone, created_at=created_at)
+    flash("Customer created.")
     return redirect(url_for("customers.list_customers"))

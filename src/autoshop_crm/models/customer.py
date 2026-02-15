@@ -1,5 +1,6 @@
 """Customer ORM model."""
 
+from datetime import datetime
 import re
 
 from sqlalchemy.orm import validates
@@ -17,6 +18,7 @@ class Customer(db.Model):
     email = db.Column(db.String(120), unique=True)
     phone = db.Column(db.String(50))
     address = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     vehicles = db.relationship("Vehicle", back_populates="customer")
 

@@ -11,6 +11,8 @@
     --brand: #1f7a4f;
     --brand-strong: #145a39;
     --highlight: #d29a2f;
+    --success: #1f7a4f;
+    --warning: #8e5d13;
     --danger: #b34444;
     --shadow: 0 14px 40px rgba(21, 54, 38, 0.1);
     --radius: 16px;
@@ -124,6 +126,13 @@ a {
 .main-nav a:hover {
     background: #e5f2ea;
     transform: translateY(-1px);
+}
+
+.nav-user {
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.5rem 0.4rem;
 }
 
 .page-frame {
@@ -322,7 +331,7 @@ a {
 
 .status-in_progress {
     background: #fef0d8;
-    color: #8e5d13;
+    color: var(--warning);
 }
 
 .status-on_hold {
@@ -332,7 +341,7 @@ a {
 
 .status-completed {
     background: #dff6e8;
-    color: #1f7a4f;
+    color: var(--success);
 }
 
 .empty-state {
@@ -455,14 +464,14 @@ select:focus {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #1c7a4c, #2f9460);
+    background: linear-gradient(135deg, var(--brand-strong), var(--brand));
     color: #f8fff9;
 }
 
 .btn-secondary {
     background: #eef6f1;
-    border-color: #c6ddcd;
-    color: #2b6548;
+    border-color: var(--line);
+    color: var(--brand-strong);
 }
 
 .btn-disabled {
@@ -520,6 +529,158 @@ select:focus {
 
 .auth-panel {
     max-width: 520px;
+}
+
+.setup-help-link {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.help-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+}
+
+.help-filter {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    background: var(--surface);
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.86rem;
+}
+
+.help-filter.is-active {
+    color: var(--brand-strong);
+    border-color: color-mix(in oklab, var(--brand), white 65%);
+    background: color-mix(in oklab, var(--brand), white 92%);
+}
+
+.help-grid {
+    display: grid;
+    gap: 0.7rem;
+}
+
+.help-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-soft);
+    padding: 0.8rem;
+}
+
+.help-card h2 {
+    margin-bottom: 0.35rem;
+}
+
+.help-card p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.help-article-body h1,
+.help-article-body h2,
+.help-article-body h3 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.help-article-body p {
+    margin: 0.5rem 0;
+    line-height: 1.5;
+}
+
+.help-article-body ul,
+.help-article-body ol {
+    margin: 0.55rem 0 0.75rem;
+    padding-left: 1.25rem;
+}
+
+.help-article-body code {
+    background: #eff5f1;
+    border: 1px solid #dce7df;
+    border-radius: 6px;
+    padding: 0.08rem 0.35rem;
+    font-size: 0.88rem;
+}
+
+.help-article-body a {
+    color: var(--brand-strong);
+    text-decoration: underline;
+}
+
+.help-separator {
+    margin: 1rem 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+}
+
+.help-related-list {
+    margin: 0.4rem 0 0;
+}
+
+.settings-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.settings-tab {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.4rem 0.78rem;
+    font-weight: 700;
+    color: var(--muted);
+    background: var(--surface);
+}
+
+.settings-tab.is-active {
+    color: var(--brand-strong);
+    border-color: color-mix(in oklab, var(--brand), white 65%);
+    background: color-mix(in oklab, var(--brand), white 92%);
+}
+
+.settings-user-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    background: var(--surface-soft);
+    display: grid;
+    gap: 0.65rem;
+}
+
+.settings-user-card header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.settings-permission-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+
+.permission-list {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.check-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--text);
+    font-weight: 600;
+}
+
+.check-row input[type="checkbox"] {
+    width: auto;
 }
 
 .sr-only {
@@ -581,6 +742,10 @@ select:focus {
     .job-sub {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .settings-permission-grid {
+        grid-template-columns: 1fr;
     }
 }
 

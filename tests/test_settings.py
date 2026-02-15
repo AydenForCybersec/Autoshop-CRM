@@ -39,24 +39,44 @@ def settings_client(settings_app):
 
 
 def test_settings_update_persists_business_and_preferences(settings_client, settings_app):
-    """Posting valid settings should persist both business and app preference fields."""
-    response = settings_client.post(
+    """Posting valid business and theme settings should persist all configured fields."""
+    business_response = settings_client.post(
         "/settings",
         data={
+            "action": "update_business",
+            "active_tab": "business",
             "shop_name": "Northside Auto",
             "shop_phone": "(555) 123-4567",
             "shop_email": "service@northside.test",
             "shop_address": "123 Main St",
+        },
+        follow_redirects=False,
+    )
+    assert business_response.status_code == 302
+    assert business_response.headers["Location"].endswith("/settings?tab=business")
+
+    theme_response = settings_client.post(
+        "/settings",
+        data={
+            "action": "update_theme",
+            "active_tab": "theme",
             "primary_color": "#102030",
             "accent_color": "#405060",
             "background_color": "#708090",
             "surface_color": "#a0b0c0",
+            "text_color": "#010203",
+            "muted_color": "#112233",
+            "line_color": "#223344",
+            "success_color": "#334455",
+            "warning_color": "#445566",
+            "danger_color": "#556677",
             "dashboard_jobs_limit": "8",
+            "radius_px": "18",
         },
         follow_redirects=False,
     )
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith("/settings")
+    assert theme_response.status_code == 302
+    assert theme_response.headers["Location"].endswith("/settings?tab=theme")
 
     with settings_app.app_context():
         settings = BusinessSettings.query.first()
@@ -71,7 +91,14 @@ def test_settings_update_persists_business_and_preferences(settings_client, sett
         assert prefs.accent_color == "#405060"
         assert prefs.background_color == "#708090"
         assert prefs.surface_color == "#a0b0c0"
+        assert prefs.text_color == "#010203"
+        assert prefs.muted_color == "#112233"
+        assert prefs.line_color == "#223344"
+        assert prefs.success_color == "#334455"
+        assert prefs.warning_color == "#445566"
+        assert prefs.danger_color == "#556677"
         assert prefs.dashboard_jobs_limit == 8
+        assert prefs.radius_px == 18
 
 
 def test_settings_rejects_invalid_hex_color(settings_client, settings_app):
@@ -79,15 +106,20 @@ def test_settings_rejects_invalid_hex_color(settings_client, settings_app):
     response = settings_client.post(
         "/settings",
         data={
-            "shop_name": "Northside Auto",
-            "shop_phone": "",
-            "shop_email": "",
-            "shop_address": "",
+            "action": "update_theme",
+            "active_tab": "theme",
             "primary_color": "not-a-color",
             "accent_color": "#405060",
             "background_color": "#708090",
             "surface_color": "#a0b0c0",
+            "text_color": "#010203",
+            "muted_color": "#112233",
+            "line_color": "#223344",
+            "success_color": "#334455",
+            "warning_color": "#445566",
+            "danger_color": "#556677",
             "dashboard_jobs_limit": "6",
+            "radius_px": "16",
         },
         follow_redirects=False,
     )
@@ -116,15 +148,20 @@ def test_settings_rejects_invalid_jobs_limit(
     response = settings_client.post(
         "/settings",
         data={
-            "shop_name": "Northside Auto",
-            "shop_phone": "",
-            "shop_email": "",
-            "shop_address": "",
+            "action": "update_theme",
+            "active_tab": "theme",
             "primary_color": "#102030",
             "accent_color": "#405060",
             "background_color": "#708090",
             "surface_color": "#a0b0c0",
+            "text_color": "#010203",
+            "muted_color": "#112233",
+            "line_color": "#223344",
+            "success_color": "#334455",
+            "warning_color": "#445566",
+            "danger_color": "#556677",
             "dashboard_jobs_limit": jobs_limit,
+            "radius_px": "16",
         },
         follow_redirects=False,
     )
@@ -143,22 +180,19 @@ def test_settings_logo_upload_updates_shop_logo(settings_client, settings_app):
     response = settings_client.post(
         "/settings",
         data={
+            "action": "update_business",
+            "active_tab": "business",
             "shop_name": "Northside Auto",
             "shop_phone": "",
             "shop_email": "",
             "shop_address": "",
-            "primary_color": "#102030",
-            "accent_color": "#405060",
-            "background_color": "#708090",
-            "surface_color": "#a0b0c0",
-            "dashboard_jobs_limit": "6",
             "business_logo": (BytesIO(b"fake image bytes"), "brand.png"),
         },
         content_type="multipart/form-data",
         follow_redirects=False,
     )
     assert response.status_code == 302
-    assert response.headers["Location"].endswith("/settings")
+    assert response.headers["Location"].endswith("/settings?tab=business")
 
     with settings_app.app_context():
         settings = BusinessSettings.query.first()

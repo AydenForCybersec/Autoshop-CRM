@@ -57,7 +57,9 @@ def test_setup_creates_admin_and_business_then_requires_login(setup_client, setu
     assert response.headers["Location"].endswith("/login")
 
     with setup_app.app_context():
-        assert User.query.filter_by(username="owner").count() == 1
+        user = User.query.filter_by(username="owner").first()
+        assert user is not None
+        assert user.role == "admin"
         settings = BusinessSettings.query.first()
         assert settings is not None
         assert settings.shop_name == "Northside Auto"

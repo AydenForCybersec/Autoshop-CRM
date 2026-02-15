@@ -1,0 +1,36 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Help Center | {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-panel compact">
+    <p class="eyebrow">Support</p>
+    <h1>Help Center</h1>
+    <p class="subcopy">Simple guides for staff, admins, and developers.</p>
+</section>
+
+<section class="panel">
+    <div class="help-filter-row" role="group" aria-label="Filter help by audience">
+        <a class="help-filter {% if not selected_audience %}is-active{% endif %}" href="{{ url_for('help.index') }}">All</a>
+        {% for audience in audience_filters %}
+            <a class="help-filter {% if selected_audience == audience %}is-active{% endif %}" href="{{ url_for('help.index', audience=audience) }}">{{ audience }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="help-grid">
+        {% for article in articles %}
+            <article class="help-card">
+                <h2><a href="{{ url_for('help.article', slug=article.slug) }}">{{ article.title }}</a></h2>
+                <p>{{ article.summary }}</p>
+                <div class="meta-row">
+                    {% for audience in article.audience %}
+                        <span class="chip">{{ audience }}</span>
+                    {% endfor %}
+                </div>
+            </article>
+        {% else %}
+            <p class="empty-state">No help articles match this filter.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

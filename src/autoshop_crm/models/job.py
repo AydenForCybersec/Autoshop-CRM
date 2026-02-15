@@ -1,5 +1,7 @@
 """Job/work-order ORM model."""
 
+from datetime import datetime
+
 from ..extensions import db
 
 
@@ -17,7 +19,7 @@ class Job(db.Model):
     status = db.Column(db.String(50), default="open")
     # Legacy schema stores this as `total`; expose it as `cost` in code.
     cost = db.Column("total", db.Float)
-    created_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     vehicle = db.relationship("Vehicle", back_populates="jobs")
 

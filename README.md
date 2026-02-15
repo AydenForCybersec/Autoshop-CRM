@@ -1,35 +1,15 @@
 # Autoshop CRM
 
-A simple, maintainable CRM for automotive repair shops.
+Autoshop CRM is a shop management app for customer records, vehicle history, work orders, and day-to-day service operations.
 
-## Features
-- Customer management
-- Vehicle tracking
-- Job/work order tracking
-- Authentication
-- Database migrations
+## Start Here
 
-## Tech Stack
-- Flask
-- SQLAlchemy
-- Alembic
-- pytest
+- Non-technical staff: `docs/user-guide/getting-started.md`
+- Admins and owners: `docs/admin-guide/initial-setup.md`
+- Developers: `docs/developer-guide/local-development.md`
+- Full docs map: `docs/index.md`
 
-## Project Structure
-
-See `docs/architecture.md`.
-
-## Setup
-
-See `docs/setup.md`.
-
-## Developer Documentation
-
-For full technical documentation (architecture, setup, routes, services, models, CLI, migrations, testing, scripts, deployment, and troubleshooting), see:
-
-- `docs/developer-guide.md`
-
-## Quick Start
+## Quick Run
 
 ```zsh
 cp .env.example .env
@@ -38,7 +18,14 @@ flask --app autoshop_crm:create_app db upgrade
 flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
 ```
 
-Use `DATABASE_URL` in `.env` as the canonical DB connection setting.
+## In-App Help Center
+
+When the server is running, authenticated users can open:
+
+- `GET /help` for Help home
+- `GET /help/<slug>` for help articles
+
+The in-app Help content is curated from repository documentation and is designed for non-technical users.
 
 ## Testing
 
