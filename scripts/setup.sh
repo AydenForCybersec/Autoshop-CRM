@@ -180,11 +180,15 @@ After=network.target ${DB_SERVICE}.service
 User=${APP_USER}
 Group=${APP_USER}
 WorkingDirectory=$(pwd)
+EnvironmentFile=$(pwd)/.env
 Environment="PATH=$(pwd)/venv/bin"
 Environment="PYTHONPATH=$(pwd)/src"
 ExecStart=$(pwd)/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 "autoshop_crm:create_app()"
 Restart=always
 RestartSec=5
+UMask=027
+NoNewPrivileges=true
+PrivateTmp=true
 StandardOutput=append:$(pwd)/logs/autoshop.log
 StandardError=append:$(pwd)/logs/autoshop-error.log
 

@@ -9,11 +9,19 @@ Admins and developers configuring runtime.
 ## Step-by-step
 1. Set required values:
    - `FLASK_APP=autoshop_crm:create_app`
+   - `FLASK_ENV=production` for production hosts
    - `SECRET_KEY=<strong-random-value>`
    - `DATABASE_URL=<sqlalchemy-url>`
 2. Optional values:
    - `FLASK_ENV` (`development` or `production`)
    - `HOST`, `PORT`, `LOG_FILE` (if used in your host scripts)
+   - Session/security:
+     - `SESSION_COOKIE_SECURE` (default `true` in production)
+     - `REMEMBER_COOKIE_SECURE` (default `true` in production)
+     - `SESSION_COOKIE_SAMESITE` (default `Lax`)
+     - `REMEMBER_COOKIE_SAMESITE` (default `Lax`)
+     - `PREFERRED_URL_SCHEME` (default `https` in production)
+     - `MAX_CONTENT_LENGTH` (bytes; default `8388608`)
    - Update manager:
      - `UPDATE_ENABLED` (`true`/`false`, default `false` in production; `true` in development)
      - `UPDATE_REPO_PATH` (git checkout path; defaults to project root)
@@ -34,7 +42,7 @@ Admins and developers configuring runtime.
 
 ## If this fails
 - Invalid DB URL: test connection with DB client first.
-- Secret key missing: app generates a random key at boot, which rotates sessions after restart.
+- Production secret key errors: set `SECRET_KEY` to a non-placeholder value (for example not `change-me-in-production`).
 
 ## Done when
 - All required variables are present and correct for your environment.

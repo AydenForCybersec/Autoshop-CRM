@@ -1,10 +1,13 @@
 """Flask application factory and blueprint wiring."""
 
+import os
+
 from sqlalchemy import inspect
 from flask import Flask, current_app, redirect, render_template, request, url_for
 from flask_login import current_user, logout_user
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-from .config import get_config
+from .config import get_config, is_placeholder_secret
 from .extensions import csrf, db, migrate, login_manager
 from .models.settings import BusinessSettings
 from .models.ui_preference import AppPreference
@@ -30,6 +33,11 @@ def create_app() -> Flask:
 
     # Load config
     app.config.from_object(get_config())
+    if os.getenv("SECRET_KEY"):
+        app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+    if os.getenv("DATABASE_URL"):
+        app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+    _apply_production_runtime_settings(app)
 
     # Init extensions
     db.init_app(app)
@@ -129,3 +137,16 @@ def create_app() -> Flask:
         return render_template("errors/404.html"), 404
 
     return app
+
+
+def _apply_production_runtime_settings(app: Flask) -> None:
+    """Apply and validate production-only runtime safeguards."""
+    if not app.config.get("DEBUG", False):
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+
+    env = os.getenv("FLASK_ENV", "development").lower()
+    if env != "production":
+        return
+
+    if is_placeholder_secret(os.getenv("SECRET_KEY")):
+        raise RuntimeError("SECRET_KEY must be explicitly set in production.")

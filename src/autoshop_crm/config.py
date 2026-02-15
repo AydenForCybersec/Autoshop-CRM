@@ -45,6 +45,11 @@ class Config:
     # Flask settings
     TEMPLATES_AUTO_RELOAD = True
     WTF_CSRF_TIME_LIMIT = _env_int("WTF_CSRF_TIME_LIMIT", 3600)
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = os.getenv("REMEMBER_COOKIE_SAMESITE", "Lax")
+    MAX_CONTENT_LENGTH = _env_int("MAX_CONTENT_LENGTH", 8 * 1024 * 1024)
 
     # Login throttling guardrails
     AUTH_MAX_ATTEMPTS = _env_int("AUTH_MAX_ATTEMPTS", 5)
@@ -78,6 +83,18 @@ class ProductionConfig(Config):
     """Configuration for production deployments."""
 
     DEBUG = False
+    TEMPLATES_AUTO_RELOAD = False
+    SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", default=True)
+    REMEMBER_COOKIE_SECURE = _env_bool("REMEMBER_COOKIE_SECURE", default=True)
+    PREFERRED_URL_SCHEME = os.getenv("PREFERRED_URL_SCHEME", "https")
+
+
+def is_placeholder_secret(value: str | None) -> bool:
+    """Return True when the configured secret key is missing or a placeholder."""
+    if not value:
+        return True
+    normalized = value.strip().lower()
+    return normalized in {"change-me-in-production", "changeme", "replace-me"}
 
 
 def get_config() -> Type[Config]:
