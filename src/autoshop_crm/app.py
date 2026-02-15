@@ -4,7 +4,6 @@ from .config import get_config
 from .extensions import db, migrate, login_manager
 
 from .cli import register_commands
-register_commands(app)
 
 # Blueprints
 from .routes.customers import customers_bp
@@ -23,6 +22,9 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+
+    # Register CLI commands
+    register_commands(app)
 
     # Register blueprints
     app.register_blueprint(auth_bp)
