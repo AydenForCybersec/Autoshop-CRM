@@ -22,12 +22,20 @@ cp .env.example .env
 
 SECRET_KEY
 DATABASE_URL
+FLASK_APP
+
+`DATABASE_URL` is the canonical database setting used by the app.
+Example for local MySQL:
+
+```zsh
+DATABASE_URL=mysql+mysqlclient://autoshop_user:your_db_password@localhost/autoshop
+```
 
 ## Initialize Database
 ```zsh
-flask db upgrade
+flask --app autoshop_crm:create_app db upgrade
 ```
 Run the App
 ```zsh
-python run.py
+flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
 ```
