@@ -32,3 +32,10 @@ flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
 ```
 
 Use `DATABASE_URL` in `.env` as the canonical DB connection setting.
+
+## Testing
+
+```zsh
+pytest
+```
+
