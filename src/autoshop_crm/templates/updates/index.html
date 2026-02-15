@@ -29,6 +29,7 @@
                 <p class="entity-meta"><strong>Remote:</strong> {{ status.remote }}/{{ status.branch }}</p>
                 <p class="entity-meta"><strong>Current Commit:</strong> <code>{{ status.current_short_commit or "N/A" }}</code></p>
                 <p class="entity-meta"><strong>Latest Remote:</strong> <code>{{ status.latest_short_commit or "N/A" }}</code></p>
+                <p class="entity-meta"><strong>Ahead By:</strong> {{ status.ahead_by }}</p>
                 <p class="entity-meta"><strong>Pending Commits:</strong> {{ status.behind_by }}</p>
                 <p class="entity-meta"><strong>Local Changes:</strong> {% if status.dirty %}Yes{% else %}No{% endif %}</p>
                 <p class="entity-meta">
@@ -39,6 +40,10 @@
                         No
                     {% endif %}
                 </p>
+                <p class="entity-meta"><strong>Repository State:</strong> {{ status.repo_state|replace('_', ' ')|title }}</p>
+                {% if status.apply_block_reason %}
+                    <p class="entity-meta"><strong>Apply Blocked:</strong> {{ status.apply_block_reason }}</p>
+                {% endif %}
             </div>
         {% endif %}
     </article>
@@ -62,7 +67,7 @@
                     <span>Confirmation Phrase</span>
                     <input type="text" name="confirm_text" autocomplete="off" placeholder="{{ config.UPDATE_CONFIRM_PHRASE }}">
                 </label>
-                <button type="submit" class="btn btn-primary" onclick="return confirm('Apply latest update now?')">Apply Latest Update</button>
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Apply latest update now?')" {% if status.error or not status.can_apply_update %}disabled{% endif %}>Apply Latest Update</button>
             </form>
             <form method="post">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

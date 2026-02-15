@@ -64,6 +64,7 @@ class UpdateManager:
             "repo_path": str(self.repo_path),
             "remote": self.remote,
             "branch": None,
+            "remote_ref": None,
             "is_git_repo": False,
             "current_commit": None,
             "current_short_commit": None,
@@ -73,6 +74,9 @@ class UpdateManager:
             "ahead_by": 0,
             "behind_by": 0,
             "has_update": False,
+            "repo_state": "unknown",
+            "can_apply_update": False,
+            "apply_block_reason": None,
             "rollback_points": self._load_history(),
             "error": None,
         }
@@ -83,18 +87,25 @@ class UpdateManager:
 
             base["is_git_repo"] = True
             branch = self._current_branch()
+            remote_ref = f"{self.remote}/{branch}"
             base["branch"] = branch
+            base["remote_ref"] = remote_ref
 
             if fetch:
                 self._run_git("fetch", "--prune", self.remote, branch)
 
             current_commit = self._run_git("rev-parse", "HEAD").stdout.strip()
-            latest_commit = self._run_git("rev-parse", f"{self.remote}/{branch}").stdout.strip()
-            counts = self._run_git("rev-list", "--left-right", "--count", f"HEAD...{self.remote}/{branch}")
+            latest_commit = self._run_git("rev-parse", remote_ref).stdout.strip()
+            counts = self._run_git("rev-list", "--left-right", "--count", f"HEAD...{remote_ref}")
             ahead_raw, behind_raw = counts.stdout.strip().split()
             ahead_by = int(ahead_raw)
             behind_by = int(behind_raw)
             dirty = bool(self._run_git("status", "--porcelain").stdout.strip())
+            repo_state, block_reason = self._derive_repo_state(
+                dirty=dirty,
+                ahead_by=ahead_by,
+                behind_by=behind_by,
+            )
 
             base.update(
                 {
@@ -106,6 +117,9 @@ class UpdateManager:
                     "ahead_by": ahead_by,
                     "behind_by": behind_by,
                     "has_update": behind_by > 0,
+                    "repo_state": repo_state,
+                    "can_apply_update": block_reason is None and behind_by > 0,
+                    "apply_block_reason": block_reason,
                 }
             )
         except (UpdateError, subprocess.SubprocessError, FileNotFoundError, ValueError) as exc:
@@ -121,6 +135,10 @@ class UpdateManager:
                 raise UpdateError(str(status["error"]))
             if status["dirty"] and not self.allow_dirty:
                 raise UpdateError("Working tree has local changes. Commit or stash them before updating.")
+            if status["ahead_by"] > 0 and status["behind_by"] > 0:
+                raise UpdateError("Repository has diverged from remote. Resolve manually before in-app updating.")
+            if status["ahead_by"] > 0 and status["behind_by"] == 0:
+                raise UpdateError("Local branch is ahead of remote. Push or reconcile commits before updating.")
             if not status["has_update"]:
                 return {
                     "updated": False,
@@ -236,6 +254,17 @@ class UpdateManager:
                 output = result.stderr.strip() or result.stdout.strip() or "Command failed"
                 raise UpdateError(f"Post-update command failed: {output}")
 
+    def _derive_repo_state(self, *, dirty: bool, ahead_by: int, behind_by: int) -> tuple[str, str | None]:
+        if dirty and not self.allow_dirty:
+            return "dirty", "Working tree has local changes."
+        if ahead_by > 0 and behind_by > 0:
+            return "diverged", "Branch has diverged from remote."
+        if ahead_by > 0 and behind_by == 0:
+            return "local_ahead", "Local branch is ahead of remote."
+        if behind_by > 0:
+            return "behind", None
+        return "in_sync", None
+
     def _is_allowed_command(self, command_parts: list[str]) -> bool:
         if not self.allowed_command_prefixes:
             return False
@@ -297,6 +326,7 @@ class UpdateManager:
     @contextmanager
     def _operation_lock(self) -> Iterator[None]:
         self.instance_path.mkdir(parents=True, exist_ok=True)
+        self._clear_stale_lock()
         try:
             fd = os.open(self.lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError as exc:
@@ -311,3 +341,27 @@ class UpdateManager:
                 self.lock_path.unlink()
             except FileNotFoundError:
                 pass
+
+    def _clear_stale_lock(self) -> None:
+        if not self.lock_path.exists():
+            return
+        try:
+            pid_text = self.lock_path.read_text(encoding="utf-8").strip()
+            pid = int(pid_text)
+        except (OSError, ValueError):
+            self.lock_path.unlink(missing_ok=True)
+            return
+
+        if pid <= 0 or not self._is_pid_running(pid):
+            self.lock_path.unlink(missing_ok=True)
+
+    def _is_pid_running(self, pid: int) -> bool:
+        if pid <= 0:
+            return False
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        return True

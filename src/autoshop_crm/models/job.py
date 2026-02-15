@@ -1,5 +1,6 @@
-"""Job/work-order ORM model."""
+"""Job/work-order ORM models."""
 
+from datetime import date
 from sqlalchemy.orm import validates
 
 from ..extensions import db
@@ -25,6 +26,17 @@ class Job(db.Model):
     created_at = db.Column(db.DateTime, default=utc_now_naive, nullable=False)
 
     vehicle = db.relationship("Vehicle", back_populates="jobs")
+    parts = db.relationship(
+        "JobPart",
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+    expenses = db.relationship(
+        "JobExpense",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        order_by="desc(JobExpense.incurred_on), desc(JobExpense.id)",
+    )
 
     @validates("status")
     def _validate_status(self, _key: str, value: str | None) -> str:
@@ -36,3 +48,97 @@ class Job(db.Model):
     def __repr__(self) -> str:
         """Return a compact debug representation for logs/shell."""
         return f"<Job {self.id} status={self.status}>"
+
+    @property
+    def expenses_total(self) -> float:
+        """Return summed expenses attached to this repair."""
+        return float(sum((expense.amount or 0.0) for expense in self.expenses))
+
+
+class JobPart(db.Model):
+    """Represents a part used in a job, optionally with warranty details."""
+
+    __tablename__ = "job_parts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("repair_orders.id"), nullable=False, index=True)
+    part_name = db.Column(db.String(180), nullable=False)
+    supplier = db.Column(db.String(180))
+    warranty_years = db.Column(db.Integer)
+    purchased_on = db.Column(db.Date, nullable=False)
+    warranty_expires_on = db.Column(db.Date)
+    notes = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=utc_now_naive, nullable=False)
+
+    job = db.relationship("Job", back_populates="parts")
+
+    @validates("part_name")
+    def _validate_part_name(self, _key: str, value: str | None) -> str:
+        normalized = (value or "").strip()
+        if not normalized:
+            raise ValueError("Part name is required.")
+        return normalized
+
+    @validates("warranty_years")
+    def _validate_warranty_years(self, _key: str, value: int | None) -> int | None:
+        if value is None:
+            return None
+        if value < 0:
+            raise ValueError("Warranty years cannot be negative.")
+        return value
+
+    @validates("purchased_on", "warranty_expires_on")
+    def _validate_dates(self, _key: str, value: date | None) -> date | None:
+        if value is None:
+            return None
+        if not isinstance(value, date):
+            raise ValueError("Part date fields must be valid dates.")
+        return value
+
+    def __repr__(self) -> str:
+        """Return a compact debug representation for logs/shell."""
+        return f"<JobPart {self.id} job={self.job_id} part={self.part_name!r}>"
+
+
+class JobExpense(db.Model):
+    """Represents an expense line item tied to a job."""
+
+    __tablename__ = "job_expenses"
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("repair_orders.id"), nullable=False, index=True)
+    description = db.Column(db.String(180), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    vendor = db.Column(db.String(180))
+    incurred_on = db.Column(db.Date, nullable=False)
+    notes = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=utc_now_naive, nullable=False)
+
+    job = db.relationship("Job", back_populates="expenses")
+
+    @validates("description")
+    def _validate_description(self, _key: str, value: str | None) -> str:
+        normalized = (value or "").strip()
+        if not normalized:
+            raise ValueError("Expense description is required.")
+        return normalized
+
+    @validates("amount")
+    def _validate_amount(self, _key: str, value: float | None) -> float:
+        if value is None:
+            raise ValueError("Expense amount is required.")
+        if value < 0:
+            raise ValueError("Expense amount cannot be negative.")
+        return float(value)
+
+    @validates("incurred_on")
+    def _validate_incurred_on(self, _key: str, value: date | None) -> date:
+        if value is None:
+            raise ValueError("Expense date is required.")
+        if not isinstance(value, date):
+            raise ValueError("Expense date must be valid.")
+        return value
+
+    def __repr__(self) -> str:
+        """Return a compact debug representation for logs/shell."""
+        return f"<JobExpense {self.id} job={self.job_id} amount={self.amount}>"

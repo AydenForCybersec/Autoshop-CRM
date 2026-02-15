@@ -1,7 +1,7 @@
 """Vehicle-related HTTP routes."""
 
 from flask.typing import ResponseReturnValue
-from flask import Blueprint, Response, flash, render_template, request, redirect, url_for
+from flask import Blueprint, Response, current_app, flash, render_template, request, redirect, url_for
 
 from ..services.authorization import require_permission
 from ..services.vehicles import (
@@ -10,7 +10,7 @@ from ..services.vehicles import (
     create_vehicle,
     merge_vehicle_data,
 )
-from ..services.jobs import get_jobs_for_vehicle
+from ..services.jobs import get_active_warranty_parts_for_vehicle, get_jobs_for_vehicle
 from ..services.dates import parse_optional_datetime
 from ..services.reports import build_vehicle_history_pdf
 from ..models.settings import BusinessSettings
@@ -24,7 +24,8 @@ def vehicle_detail(vehicle_id: int) -> ResponseReturnValue:
     """Render vehicle details and associated jobs."""
     vehicle = get_vehicle(vehicle_id)
     jobs = get_jobs_for_vehicle(vehicle_id)
-    return render_template("vehicles/detail.html", vehicle=vehicle, jobs=jobs)
+    warranty_parts = get_active_warranty_parts_for_vehicle(vehicle_id=vehicle_id)
+    return render_template("vehicles/detail.html", vehicle=vehicle, jobs=jobs, warranty_parts=warranty_parts)
 
 
 @vehicles_bp.route("/create", methods=["POST"])
@@ -120,7 +121,16 @@ def vehicle_history_pdf(vehicle_id: int) -> ResponseReturnValue:
     jobs = get_jobs_for_vehicle(vehicle_id)
     settings = BusinessSettings.query.first()
     shop_name = settings.shop_name if settings and settings.shop_name else "Autoshop CRM"
-    pdf_bytes = build_vehicle_history_pdf(vehicle=vehicle, jobs=jobs, shop_name=shop_name)
+    pdf_bytes = build_vehicle_history_pdf(
+        vehicle=vehicle,
+        jobs=jobs,
+        shop_name=shop_name,
+        shop_phone=settings.shop_phone if settings else None,
+        shop_email=settings.shop_email if settings else None,
+        shop_address=settings.shop_address if settings else None,
+        shop_logo_path=settings.shop_logo if settings else None,
+        static_folder=current_app.static_folder,
+    )
     filename = f"vehicle-{vehicle.id}-service-history.pdf"
 
     return Response(

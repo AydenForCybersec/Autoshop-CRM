@@ -307,12 +307,34 @@ a {
     gap: 0.6rem;
 }
 
+.job-parts {
+    border-top: 1px solid var(--line);
+    padding-top: 0.6rem;
+    display: grid;
+    gap: 0.55rem;
+}
+
+.job-parts h3 {
+    font-size: 0.95rem;
+}
+
 .job-main,
 .job-sub {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 0.6rem;
+}
+
+.part-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.6rem;
+}
+
+.part-item {
+    padding: 0.6rem;
 }
 
 .status-badge {
@@ -463,6 +485,13 @@ select:focus {
     filter: brightness(0.98);
 }
 
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    filter: none;
+}
+
 .btn-primary {
     background: linear-gradient(135deg, var(--brand-strong), var(--brand));
     color: #f8fff9;
@@ -492,6 +521,11 @@ select:focus {
 .inline-form select {
     width: auto;
     min-width: 9rem;
+}
+
+.inline-form input {
+    width: auto;
+    min-width: 11rem;
 }
 
 .pagination {

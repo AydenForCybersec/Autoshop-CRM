@@ -44,6 +44,7 @@ class FakeUpdateManager:
             "repo_path": "/tmp/repo",
             "remote": "origin",
             "branch": "main",
+            "remote_ref": "origin/main",
             "is_git_repo": True,
             "current_commit": "1111111111111111",
             "current_short_commit": "11111111",
@@ -53,6 +54,9 @@ class FakeUpdateManager:
             "ahead_by": 0,
             "behind_by": 1 if fetch else 0,
             "has_update": bool(fetch),
+            "repo_state": "behind" if fetch else "in_sync",
+            "can_apply_update": bool(fetch),
+            "apply_block_reason": None if fetch else "No updates available.",
             "rollback_points": [
                 {"commit": "1111111111111111", "short_commit": "11111111", "timestamp_utc": "2026-02-15T00:00:00+00:00"}
             ],

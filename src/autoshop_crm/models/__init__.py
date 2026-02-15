@@ -2,7 +2,7 @@
 
 from .customer import Customer
 from .vehicle import Vehicle
-from .job import Job
+from .job import Job, JobExpense, JobPart
 from .user import User
 from .settings import BusinessSettings
 from .ui_preference import AppPreference
@@ -11,6 +11,8 @@ __all__ = [
     "Customer",
     "Vehicle",
     "Job",
+    "JobPart",
+    "JobExpense",
     "User",
     "BusinessSettings",
     "AppPreference",

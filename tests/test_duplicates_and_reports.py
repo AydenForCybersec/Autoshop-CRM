@@ -1,9 +1,14 @@
 """Tests for duplicate handling, backdating, and reporting endpoints."""
 
+from pathlib import Path
+
 from autoshop_crm.models.customer import Customer
 from autoshop_crm.models.job import Job
+from autoshop_crm.models.settings import BusinessSettings
 from autoshop_crm.models.vehicle import Vehicle
+from autoshop_crm.extensions import db
 from autoshop_crm.services.customers import create_customer
+from autoshop_crm.services.jobs import create_job_part
 from autoshop_crm.services.vehicles import create_vehicle
 
 
@@ -101,10 +106,40 @@ def test_backdated_job_and_reporting_exports(client, app):
         assert job.created_at.year == 2020
         assert job.created_at.month == 1
         assert job.created_at.day == 1
+        create_job_part(
+            job=job,
+            part_name="Front Brake Pads",
+            supplier="OEM Supply",
+            warranty_years=2,
+            notes="Parts warranty validated at pickup.",
+        )
+        settings = BusinessSettings.query.first()
+        assert settings is not None
+        settings.shop_phone = "(555) 000-1212"
+        settings.shop_email = "service@northside.test"
+        settings.shop_address = "123 Service Ln, Detroit, MI"
+        settings.shop_logo = "uploads/logos/test-logo.png"
+        logo_path = Path(app.static_folder) / settings.shop_logo
+        logo_path.parent.mkdir(parents=True, exist_ok=True)
+        logo_path.write_bytes(
+            bytes.fromhex(
+                "89504E470D0A1A0A0000000D4948445200000001000000010802000000907753DE"
+                "0000000C49444154789C63F8CFC0000003010100C9FE92EF0000000049454E44AE426082"
+            )
+        )
+        db.session.commit()
 
     pdf_response = client.get(f"/vehicles/{vehicle.id}/history.pdf")
     assert pdf_response.status_code == 200
     assert pdf_response.mimetype == "application/pdf"
+    pdf_text = pdf_response.data.decode("latin-1", errors="ignore")
+    assert "Northside Auto" in pdf_text
+    assert "000-1212" in pdf_text
+    assert "service@northside.test" in pdf_text
+    assert "Warranty Coverage Summary" in pdf_text
+    assert "Front Brake Pads" in pdf_text
+    assert b"/Subtype /Image" in pdf_response.data
+    assert b"/Im1" in pdf_response.data
 
     accounting_response = client.get("/accounting/")
     assert accounting_response.status_code == 200
