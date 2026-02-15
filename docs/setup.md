@@ -39,3 +39,10 @@ Run the App
 ```zsh
 flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
 ```
+
+## Run Tests
+```zsh
+pytest
+```
+
+`pytest.ini` is configured so tests can import the app package from `src` automatically.

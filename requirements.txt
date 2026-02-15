@@ -9,4 +9,4 @@ alembic
 Werkzeug
 Flask-SQLAlchemy
 psutil
-
+pytest
