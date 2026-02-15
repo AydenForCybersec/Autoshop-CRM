@@ -1,39 +1,76 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}Vehicle{% endblock %}
+{% block title %}Vehicle #{{ vehicle.id }} | {{ app_name }}{% endblock %}
 
 {% block content %}
-<h1>{{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}</h1>
+<section class="hero-panel compact">
+    <p class="eyebrow">Vehicle Profile</p>
+    <h1>{{ vehicle.year or "Year N/A" }} {{ vehicle.make }} {{ vehicle.model }}</h1>
+    <div class="meta-row">
+        <span class="chip">Vehicle ID #{{ vehicle.id }}</span>
+        <span class="chip">Customer ID #{{ vehicle.customer_id }}</span>
+        <span class="chip">VIN: {{ vehicle.vin or "Not provided" }}</span>
+        <span class="chip">Plate: {{ vehicle.license_plate or "Not provided" }}</span>
+    </div>
+</section>
 
-<h2>Jobs</h2>
+<section class="layout-two-col">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Jobs</h2>
+            <span class="chip">{{ jobs|length }} total</span>
+        </div>
 
-<ul>
-    {% for job in jobs %}
-        <li>
-            {{ job.description }} —
-            <strong>{{ job.status }}</strong>
+        <ul class="entity-list job-list">
+            {% for job in jobs %}
+                <li class="entity-item job-item">
+                    <div class="job-main">
+                        <span class="entity-title">{{ job.description }}</span>
+                        <span class="status-badge status-{{ job.status|lower|replace(' ', '-') }}">{{ job.status }}</span>
+                    </div>
 
-            <form method="post"
-                  action="{{ url_for('jobs.update_status', job_id=job.id) }}"
-                  style="display:inline;">
-                <select name="status">
-                    <option value="open">Open</option>
-                    <option value="completed">Completed</option>
-                </select>
-                <button type="submit">Update</button>
-            </form>
-        </li>
-    {% else %}
-        <li>No jobs found.</li>
-    {% endfor %}
-</ul>
+                    <div class="job-sub">
+                        <span class="entity-meta">Cost: {% if job.cost is not none %}${{ '%.2f'|format(job.cost) }}{% else %}N/A{% endif %}</span>
 
-<h3>Add Job</h3>
+                        <form method="post" action="{{ url_for('jobs.update_status', job_id=job.id) }}" class="inline-form">
+                            <label class="sr-only" for="status-{{ job.id }}">Update status</label>
+                            <select id="status-{{ job.id }}" name="status">
+                                <option value="open" {% if job.status == 'open' %}selected{% endif %}>Open</option>
+                                <option value="in_progress" {% if job.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                <option value="on_hold" {% if job.status == 'on_hold' %}selected{% endif %}>On Hold</option>
+                                <option value="completed" {% if job.status == 'completed' %}selected{% endif %}>Completed</option>
+                            </select>
+                            <button type="submit" class="btn btn-secondary">Update</button>
+                        </form>
+                    </div>
+                </li>
+            {% else %}
+                <li class="empty-state">No jobs found yet.</li>
+            {% endfor %}
+        </ul>
+    </article>
 
-<form method="post" action="{{ url_for('jobs.create') }}">
-    <input type="hidden" name="vehicle_id" value="{{ vehicle.id }}">
-    <input type="text" name="description" placeholder="Description" required>
-    <input type="number" step="0.01" name="cost" placeholder="Cost">
-    <button type="submit">Add Job</button>
-</form>
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Add Job</h2>
+            <span class="chip">For this vehicle</span>
+        </div>
+
+        <form method="post" action="{{ url_for('jobs.create') }}" class="form-grid">
+            <input type="hidden" name="vehicle_id" value="{{ vehicle.id }}">
+
+            <label class="field">
+                <span>Description</span>
+                <input type="text" name="description" placeholder="Brake pad replacement" required>
+            </label>
+
+            <label class="field">
+                <span>Cost</span>
+                <input type="number" step="0.01" name="cost" placeholder="120.00">
+            </label>
+
+            <button type="submit" class="btn btn-primary">Add Job</button>
+        </form>
+    </article>
+</section>
 {% endblock %}

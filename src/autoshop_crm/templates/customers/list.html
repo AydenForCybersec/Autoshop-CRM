@@ -1,29 +1,61 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}Customers{% endblock %}
+{% block title %}Customers | {{ app_name }}{% endblock %}
 
 {% block content %}
-<h1>Customers</h1>
+<section class="hero-panel compact">
+    <p class="eyebrow">Customer Management</p>
+    <h1>Customers</h1>
+    <p class="subcopy">Browse customer records and open profiles to manage their vehicles and jobs.</p>
+</section>
 
-<ul>
-    {% for customer in customers %}
-        <li>
-            <a href="{{ url_for('customers.customer_detail', customer_id=customer.id) }}">
-                {{ customer.name }}
-            </a>
-        </li>
-    {% else %}
-        <li>No customers found.</li>
-    {% endfor %}
-</ul>
+<section class="layout-two-col">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Directory</h2>
+            <span class="chip">{{ customers|length }} on this page</span>
+        </div>
 
-<h2>Add Customer</h2>
+        <ul class="entity-list">
+            {% for customer in customers %}
+                <li class="entity-item">
+                    <a class="entity-link" href="{{ url_for('customers.customer_detail', customer_id=customer.id) }}">
+                        <span class="entity-title">{{ customer.name }}</span>
+                        <span class="entity-meta">{{ customer.email or "No email" }} · {{ customer.phone or "No phone" }}</span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="empty-state">No customers found yet.</li>
+            {% endfor %}
+        </ul>
 
-<form method="post" action="{{ url_for('customers.create') }}">
-    <input type="text" name="name" placeholder="Name" required>
-    <input type="email" name="email" placeholder="Email">
-    <input type="text" name="phone" placeholder="Phone">
-    <button type="submit">Create</button>
-</form>
+        {% include "layouts/pagination.html" %}
+    </article>
+
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Add Customer</h2>
+            <span class="chip">Quick create</span>
+        </div>
+
+        <form method="post" action="{{ url_for('customers.create') }}" class="form-grid">
+            <label class="field">
+                <span>Name</span>
+                <input type="text" name="name" placeholder="Customer full name" required>
+            </label>
+
+            <label class="field">
+                <span>Email</span>
+                <input type="email" name="email" placeholder="name@example.com">
+            </label>
+
+            <label class="field">
+                <span>Phone</span>
+                <input type="text" name="phone" placeholder="(555) 123-4567">
+            </label>
+
+            <button type="submit" class="btn btn-primary">Create Customer</button>
+        </form>
+    </article>
+</section>
 {% endblock %}
-{% include "layouts/pagination.html" %}

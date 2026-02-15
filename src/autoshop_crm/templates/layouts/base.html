@@ -2,28 +2,69 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Autoshop CRM{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
 
+    {% if app_favicon_url %}
+        <link rel="icon" href="{{ app_favicon_url }}">
+    {% endif %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% if theme_vars %}
+        <style>
+            :root {
+                {% for name, value in theme_vars.items() %}
+                    {{ name }}: {{ value }};
+                {% endfor %}
+            }
+        </style>
+    {% endif %}
 </head>
 <body>
-    <nav>
-        <a href="{{ url_for('customers.list_customers') }}">Customers</a>
-        <a href="{{ url_for('auth.logout_view') }}">Logout</a>
-    </nav>
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="brand-wrap">
+                <span class="brand-mark" aria-hidden="true">
+                    {% if app_logo_url %}
+                        <img class="brand-logo" src="{{ app_logo_url }}" alt="">
+                    {% else %}
+                        {{ app_initials }}
+                    {% endif %}
+                </span>
+                <div>
+                    <p class="brand-kicker">Service Operations</p>
+                    <a class="brand-title" href="{{ url_for('dashboard.index') }}">{{ app_name }}</a>
+                </div>
+            </div>
 
-    <main>
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <ul class="flashes">
-                    {% for message in messages %}
-                        <li>{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
+            <nav class="main-nav" aria-label="Primary navigation">
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
+                    <a href="{{ url_for('customers.list_customers') }}">Customers</a>
+                    <a href="{{ url_for('dashboard.settings') }}">Settings</a>
+                    <a href="{{ url_for('auth.logout_view') }}">Logout</a>
+                {% else %}
+                    {% if request.endpoint == "auth.setup_admin" %}
+                        <a href="{{ url_for('auth.setup_admin') }}">Setup Admin</a>
+                    {% else %}
+                        <a href="{{ url_for('auth.login_view') }}">Login</a>
+                    {% endif %}
+                {% endif %}
+            </nav>
+        </header>
 
-        {% block content %}{% endblock %}
-    </main>
+        <main class="page-frame">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <ul class="flash-list">
+                        {% for message in messages %}
+                            <li class="flash-item">{{ message }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
 </body>
 </html>

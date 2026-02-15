@@ -1,34 +1,78 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}Customer{% endblock %}
+{% block title %}{{ customer.name }} | Customer | {{ app_name }}{% endblock %}
 
 {% block content %}
-<h1>{{ customer.name }}</h1>
+<section class="hero-panel compact">
+    <p class="eyebrow">Customer Profile</p>
+    <h1>{{ customer.name }}</h1>
+    <div class="meta-row">
+        <span class="chip">Email: {{ customer.email or "Not provided" }}</span>
+        <span class="chip">Phone: {{ customer.phone or "Not provided" }}</span>
+    </div>
+</section>
 
-<p>Email: {{ customer.email or "—" }}</p>
-<p>Phone: {{ customer.phone or "—" }}</p>
+<section class="layout-two-col">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Vehicles</h2>
+            <span class="chip">{{ customer.vehicles|length }} total</span>
+        </div>
 
-<h2>Vehicles</h2>
+        <ul class="entity-list">
+            {% for vehicle in customer.vehicles %}
+                <li class="entity-item">
+                    <a class="entity-link" href="{{ url_for('vehicles.vehicle_detail', vehicle_id=vehicle.id) }}">
+                        <span class="entity-title">{{ vehicle.year or "Year N/A" }} {{ vehicle.make }} {{ vehicle.model }}</span>
+                        <span class="entity-meta">
+                            Vehicle ID #{{ vehicle.id }}
+                            {% if vehicle.vin %} · VIN: {{ vehicle.vin }}{% endif %}
+                            {% if vehicle.license_plate %} · Plate: {{ vehicle.license_plate }}{% endif %}
+                        </span>
+                    </a>
+                </li>
+            {% else %}
+                <li class="empty-state">No vehicles added yet.</li>
+            {% endfor %}
+        </ul>
+    </article>
 
-<ul>
-    {% for vehicle in customer.vehicles %}
-        <li>
-            <a href="{{ url_for('vehicles.vehicle_detail', vehicle_id=vehicle.id) }}">
-                {{ vehicle.year }} {{ vehicle.make }} {{ vehicle.model }}
-            </a>
-        </li>
-    {% else %}
-        <li>No vehicles yet.</li>
-    {% endfor %}
-</ul>
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Add Vehicle</h2>
+            <span class="chip">Linked to {{ customer.name }}</span>
+        </div>
 
-<h3>Add Vehicle</h3>
+        <form method="post" action="{{ url_for('vehicles.create') }}" class="form-grid">
+            <input type="hidden" name="customer_id" value="{{ customer.id }}">
 
-<form method="post" action="{{ url_for('vehicles.create') }}">
-    <input type="hidden" name="customer_id" value="{{ customer.id }}">
-    <input type="text" name="make" placeholder="Make" required>
-    <input type="text" name="model" placeholder="Model" required>
-    <input type="number" name="year" placeholder="Year">
-    <button type="submit">Add Vehicle</button>
-</form>
+            <label class="field">
+                <span>Make</span>
+                <input type="text" name="make" placeholder="Toyota" required>
+            </label>
+
+            <label class="field">
+                <span>Model</span>
+                <input type="text" name="model" placeholder="Camry" required>
+            </label>
+
+            <label class="field">
+                <span>Year</span>
+                <input type="number" name="year" placeholder="2020">
+            </label>
+
+            <label class="field">
+                <span>VIN</span>
+                <input type="text" name="vin" placeholder="1HGCM82633A123456" maxlength="17">
+            </label>
+
+            <label class="field">
+                <span>License Plate</span>
+                <input type="text" name="license_plate" placeholder="ABC1234" maxlength="30">
+            </label>
+
+            <button type="submit" class="btn btn-primary">Add Vehicle</button>
+        </form>
+    </article>
+</section>
 {% endblock %}

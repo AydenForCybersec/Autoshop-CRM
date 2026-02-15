@@ -1,13 +1,94 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}Dashboard | {{ app_name }}{% endblock %}
 
 {% block content %}
-<h1>Dashboard</h1>
+<section class="hero-panel">
+    <p class="eyebrow">Operations Overview</p>
+    <h1>{{ app_name }} Dashboard</h1>
+    <p class="subcopy">Track active work, job status flow, and current repair pipeline value in one place.</p>
+</section>
 
-<p>Welcome to Autoshop CRM.</p>
+<section class="stats-grid">
+    <article class="panel stat-card">
+        <p class="stat-label">Customers</p>
+        <p class="stat-value">{{ totals.customers }}</p>
+    </article>
+    <article class="panel stat-card">
+        <p class="stat-label">Vehicles</p>
+        <p class="stat-value">{{ totals.vehicles }}</p>
+    </article>
+    <article class="panel stat-card">
+        <p class="stat-label">Active Jobs</p>
+        <p class="stat-value">{{ totals.active_jobs }}</p>
+    </article>
+    <article class="panel stat-card">
+        <p class="stat-label">Completion Rate</p>
+        <p class="stat-value">{{ completion_rate }}%</p>
+    </article>
+</section>
 
-<ul>
-    <li><a href="{{ url_for('customers.list_customers') }}">View Customers</a></li>
-</ul>
+<section class="layout-two-col">
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Job Status Breakdown</h2>
+            <span class="chip">{{ totals.jobs }} total</span>
+        </div>
+        <ul class="status-grid">
+            {% for status, label in status_labels.items() %}
+                <li class="status-row">
+                    <span class="status-badge status-{{ status|replace(' ', '-') }}">{{ label }}</span>
+                    <strong>{{ status_counts[status] }}</strong>
+                </li>
+            {% endfor %}
+        </ul>
+        <p class="pipeline-meta">Open pipeline value: <strong>${{ "%.2f"|format(open_pipeline_value) }}</strong></p>
+    </article>
+
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Quick Actions</h2>
+            <span class="chip">Shortcuts</span>
+        </div>
+        <div class="action-row">
+            <a class="btn btn-primary" href="{{ url_for('customers.list_customers') }}">View Customers</a>
+            <a class="btn btn-secondary" href="{{ url_for('dashboard.settings') }}">Edit Settings</a>
+        </div>
+        <p class="entity-meta">Tip: open any customer to add vehicles and create jobs directly from that profile.</p>
+    </article>
+</section>
+
+<section class="panel">
+    <div class="panel-head">
+        <h2>Recent Jobs</h2>
+        <span class="chip">{{ recent_jobs|length }} shown</span>
+    </div>
+
+    <ul class="entity-list job-list">
+        {% for job in recent_jobs %}
+            <li class="entity-item job-item">
+                <div class="job-main">
+                    <span class="entity-title">{{ job.description }}</span>
+                    <span class="status-badge status-{{ (job.status or 'open')|lower|replace(' ', '-') }}">
+                        {{ status_labels.get((job.status or 'open')|lower, (job.status or 'open')|replace('_', ' ')|title) }}
+                    </span>
+                </div>
+                <div class="job-sub">
+                    <span class="entity-meta">
+                        {% if job.vehicle and job.vehicle.customer %}
+                            {{ job.vehicle.customer.name }} ·
+                        {% endif %}
+                        Vehicle #{{ job.vehicle_id }}
+                        {% if job.cost is not none %}
+                            · ${{ "%.2f"|format(job.cost) }}
+                        {% endif %}
+                    </span>
+                    <a class="btn btn-secondary" href="{{ url_for('vehicles.vehicle_detail', vehicle_id=job.vehicle_id) }}">Open</a>
+                </div>
+            </li>
+        {% else %}
+            <li class="empty-state">No jobs yet. Add a job from any vehicle profile.</li>
+        {% endfor %}
+    </ul>
+</section>
 {% endblock %}

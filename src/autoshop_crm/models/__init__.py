@@ -4,10 +4,14 @@ from .customer import Customer
 from .vehicle import Vehicle
 from .job import Job
 from .user import User
+from .settings import BusinessSettings
+from .ui_preference import AppPreference
 
 __all__ = [
     "Customer",
     "Vehicle",
     "Job",
     "User",
+    "BusinessSettings",
+    "AppPreference",
 ]

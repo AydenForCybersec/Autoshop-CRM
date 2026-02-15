@@ -6,14 +6,18 @@ from ..extensions import db
 class Job(db.Model):
     """Represents maintenance or repair work for a vehicle."""
 
-    __tablename__ = "jobs"
+    # Keep app-facing model name as Job while mapping to the existing legacy
+    # table name used by the current database schema.
+    __tablename__ = "repair_orders"
 
     id = db.Column(db.Integer, primary_key=True)
     vehicle_id = db.Column(db.Integer, db.ForeignKey("vehicles.id"), nullable=False)
 
     description = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), default="open")
-    cost = db.Column(db.Float)
+    # Legacy schema stores this as `total`; expose it as `cost` in code.
+    cost = db.Column("total", db.Float)
+    created_at = db.Column(db.DateTime)
 
     vehicle = db.relationship("Vehicle", back_populates="jobs")
 

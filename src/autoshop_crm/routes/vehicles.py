@@ -23,10 +23,13 @@ def vehicle_detail(vehicle_id: int) -> ResponseReturnValue:
 @vehicles_bp.route("/create", methods=["POST"])
 def create() -> ResponseReturnValue:
     """Create a vehicle from form data and redirect to its detail page."""
+    year_raw = request.form.get("year", "").strip()
     vehicle = create_vehicle(
         customer_id=request.form["customer_id"],
         make=request.form["make"],
         model=request.form["model"],
-        year=request.form.get("year"),
+        year=int(year_raw) if year_raw else None,
+        vin=request.form.get("vin"),
+        license_plate=request.form.get("license_plate"),
     )
     return redirect(url_for("vehicles.vehicle_detail", vehicle_id=vehicle.id))

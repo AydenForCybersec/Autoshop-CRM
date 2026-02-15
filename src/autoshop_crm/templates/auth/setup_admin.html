@@ -1,0 +1,43 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Initial Setup | {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-panel">
+    <p class="eyebrow">First Launch</p>
+    <h1>Create your admin account.</h1>
+    <p class="subcopy">This one-time setup unlocks the CRM and secures access to shop data.</p>
+</section>
+
+<section class="panel auth-panel">
+    <h2>Initial Admin Setup</h2>
+    <form method="post" enctype="multipart/form-data" class="form-grid">
+        <label class="field">
+            <span>Business Name</span>
+            <input type="text" name="business_name" placeholder="e.g. Northside Auto" value="{{ setup_business_name|default('') }}" required>
+        </label>
+
+        <label class="field">
+            <span>Business Logo (optional)</span>
+            <input type="file" name="business_logo" accept=".png,.jpg,.jpeg,.webp,.gif,.svg">
+        </label>
+
+        <label class="field">
+            <span>Username</span>
+            <input type="text" name="username" placeholder="e.g. owner" value="{{ setup_username|default('') }}" required>
+        </label>
+
+        <label class="field">
+            <span>Password</span>
+            <input type="password" name="password" placeholder="At least 8 characters" minlength="8" required>
+        </label>
+
+        <label class="field">
+            <span>Confirm Password</span>
+            <input type="password" name="confirm_password" placeholder="Re-enter password" minlength="8" required>
+        </label>
+
+        <button type="submit" class="btn btn-primary">Create Admin Account</button>
+    </form>
+</section>
+{% endblock %}

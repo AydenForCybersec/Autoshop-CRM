@@ -1,13 +1,28 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}Login{% endblock %}
+{% block title %}Sign In | {{ app_name }}{% endblock %}
 
 {% block content %}
-<h1>Login</h1>
+<section class="hero-panel">
+    <p class="eyebrow">Welcome Back</p>
+    <h1>Manage your shop from one clean dashboard.</h1>
+    <p class="subcopy">Track customers, vehicles, and work orders without spreadsheets.</p>
+</section>
 
-<form method="post">
-    <input type="text" name="username" placeholder="Username" required>
-    <input type="password" name="password" placeholder="Password" required>
-    <button type="submit">Login</button>
-</form>
+<section class="panel auth-panel">
+    <h2>Sign in</h2>
+    <form method="post" class="form-grid">
+        <label class="field">
+            <span>Username</span>
+            <input type="text" name="username" placeholder="e.g. shopadmin" required>
+        </label>
+
+        <label class="field">
+            <span>Password</span>
+            <input type="password" name="password" placeholder="Your password" required>
+        </label>
+
+        <button type="submit" class="btn btn-primary">Login</button>
+    </form>
+</section>
 {% endblock %}

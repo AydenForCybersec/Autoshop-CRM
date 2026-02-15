@@ -1,0 +1,140 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Settings | {{ app_name }}{% endblock %}
+
+{% block content %}
+{% set fv = form_values or {} %}
+<section class="hero-panel compact">
+    <p class="eyebrow">Configuration</p>
+    <h1>Shop Settings</h1>
+    <p class="subcopy">Update branding, contact details, dashboard behavior, and color theme.</p>
+</section>
+
+<form method="post" enctype="multipart/form-data">
+    <section class="layout-two-col">
+        <article class="panel">
+            <div class="panel-head">
+                <h2>Business Profile</h2>
+                <span class="chip">Branding</span>
+            </div>
+            <div class="form-grid">
+            <label class="field">
+                <span>Shop Name</span>
+                <input type="text" name="shop_name" value="{{ fv.get('shop_name', settings.shop_name) }}" required>
+            </label>
+
+            <label class="field">
+                <span>Phone</span>
+                <input type="text" name="shop_phone" value="{{ fv.get('shop_phone', settings.shop_phone or '') }}" placeholder="(555) 123-4567">
+            </label>
+
+            <label class="field">
+                <span>Email</span>
+                <input type="email" name="shop_email" value="{{ fv.get('shop_email', settings.shop_email or '') }}" placeholder="service@example.com">
+            </label>
+
+            <label class="field">
+                <span>Address</span>
+                <input type="text" name="shop_address" value="{{ fv.get('shop_address', settings.shop_address or '') }}" placeholder="Street, City, State">
+            </label>
+
+            <label class="field">
+                <span>Upload New Logo</span>
+                <input type="file" name="business_logo" accept=".png,.jpg,.jpeg,.webp,.gif,.svg">
+            </label>
+            </div>
+        </article>
+
+        <article class="panel">
+            <div class="panel-head">
+                <h2>Theme & Dashboard</h2>
+                <span class="chip">UI Preferences</span>
+            </div>
+            <div class="form-grid">
+            <label class="field">
+                <span>Primary Color</span>
+                <input type="color" name="primary_color" value="{{ fv.get('primary_color', preferences.primary_color) }}">
+            </label>
+
+            <label class="field">
+                <span>Accent Color</span>
+                <input type="color" name="accent_color" value="{{ fv.get('accent_color', preferences.accent_color) }}">
+            </label>
+
+            <label class="field">
+                <span>Background Color</span>
+                <input type="color" name="background_color" value="{{ fv.get('background_color', preferences.background_color) }}">
+            </label>
+
+            <label class="field">
+                <span>Panel Surface Color</span>
+                <input type="color" name="surface_color" value="{{ fv.get('surface_color', preferences.surface_color) }}">
+            </label>
+
+            <label class="field">
+                <span>Recent Jobs on Dashboard</span>
+                <input type="number" min="3" max="20" name="dashboard_jobs_limit" value="{{ fv.get('dashboard_jobs_limit', preferences.dashboard_jobs_limit) }}">
+            </label>
+
+            <div class="theme-preview" id="theme-preview">
+                <p class="theme-preview-label">Theme preview</p>
+                <article class="theme-preview-card" id="theme-preview-card">
+                    <p class="theme-preview-kicker">Service Operations</p>
+                    <h3 id="theme-preview-title">{{ fv.get('shop_name', settings.shop_name) }}</h3>
+                    <p class="theme-preview-copy">Sample panel text and status chip using your selected colors.</p>
+                    <div class="theme-preview-row">
+                        <span class="theme-preview-chip" id="theme-preview-chip">In Progress</span>
+                        <button class="btn btn-primary" type="button">Primary Button</button>
+                    </div>
+                </article>
+            </div>
+
+            <p class="entity-meta">The uploaded logo is also used as the site favicon.</p>
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+            </div>
+        </article>
+    </section>
+</form>
+
+<script>
+(() => {
+    const primary = document.querySelector("input[name='primary_color']");
+    const accent = document.querySelector("input[name='accent_color']");
+    const background = document.querySelector("input[name='background_color']");
+    const surface = document.querySelector("input[name='surface_color']");
+    const card = document.getElementById("theme-preview-card");
+    const chip = document.getElementById("theme-preview-chip");
+    const title = document.getElementById("theme-preview-title");
+    const nameInput = document.querySelector("input[name='shop_name']");
+
+    if (!primary || !accent || !background || !surface || !card || !chip) {
+        return;
+    }
+
+    const apply = () => {
+        document.documentElement.style.setProperty("--brand", primary.value);
+        document.documentElement.style.setProperty("--brand-strong", primary.value);
+        document.documentElement.style.setProperty("--highlight", accent.value);
+        document.documentElement.style.setProperty("--bg", background.value);
+        document.documentElement.style.setProperty("--surface", surface.value);
+
+        card.style.background = surface.value;
+        card.style.borderColor = primary.value + "55";
+        chip.style.background = accent.value + "33";
+        chip.style.color = primary.value;
+    };
+
+    [primary, accent, background, surface].forEach((input) => {
+        input.addEventListener("input", apply);
+    });
+
+    if (nameInput && title) {
+        nameInput.addEventListener("input", () => {
+            title.textContent = nameInput.value.trim() || "Your Shop";
+        });
+    }
+
+    apply();
+})();
+</script>
+{% endblock %}

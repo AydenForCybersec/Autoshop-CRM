@@ -14,6 +14,8 @@ class Vehicle(db.Model):
     make = db.Column(db.String(100), nullable=False)
     model = db.Column(db.String(100), nullable=False)
     year = db.Column(db.Integer)
+    vin = db.Column(db.String(17))
+    license_plate = db.Column("plate", db.String(30))
 
     customer = db.relationship("Customer", back_populates="vehicles")
     jobs = db.relationship("Job", back_populates="vehicle")
