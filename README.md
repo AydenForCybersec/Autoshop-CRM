@@ -32,3 +32,12 @@ The in-app Help content is curated from repository documentation and is designed
 ```zsh
 pytest
 ```
+
+## License
+
+This project is licensed under the GNU Affero General Public License v3.0 (`AGPL-3.0-only`).
+See `LICENSE` for the full text.
+Copyright and original authorship are recorded in `COPYRIGHT`.
+
+If you distribute or modify this software, you must preserve copyright and license notices,
+and provide source code under AGPLv3 terms.
