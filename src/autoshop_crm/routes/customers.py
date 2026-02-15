@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for
 
 from ..services.customers import (
+    get_all_customers,
     get_customers_paginated,
     get_customer,
     create_customer,

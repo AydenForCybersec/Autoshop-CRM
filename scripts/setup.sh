@@ -19,8 +19,8 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # --- Verify project root ---
-if [ ! -f "manage.py" ]; then
-  echo "❌ Run this from the project root (where manage.py is)."
+if [ ! -f "run.py" ] && [ ! -f "src/autoshop_crm/__init__.py" ]; then
+  echo "❌ Run this from the project root (where run.py and src/autoshop_crm live)."
   exit 1
 fi
 
@@ -86,7 +86,7 @@ cat > .env <<EOF
 # ============================================
 # AutoShop CRM Configuration
 # ============================================
-FLASK_APP=manage.py
+FLASK_APP=autoshop_crm:create_app
 FLASK_ENV=$( [ "$DEVELOPMENT" = "true" ] && echo "development" || echo "production" )
 SECRET_KEY=$(openssl rand -hex 16)
 DEVELOPMENT=${DEVELOPMENT}
@@ -94,21 +94,14 @@ DEVELOPMENT=${DEVELOPMENT}
 HOST=0.0.0.0
 PORT=5000
 
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=${DB_NAME}
-DB_USER=${DB_USER}
-DB_PASSWORD=${DB_PASS}
-SQLALCHEMY_DATABASE_URI=mysql+mysqlclient://${DB_USER}:${DB_PASS}@localhost/${DB_NAME}
+DATABASE_URL=mysql+mysqlclient://${DB_USER}:${DB_PASS}@localhost/${DB_NAME}
 
 LOG_FILE=logs/app.log
 EOF
 
 # --- Run migrations ---
 echo "🧱 Initializing database..."
-flask db init || true
-flask db migrate -m "Initial tables" || true
-flask db upgrade
+flask --app autoshop_crm:create_app db upgrade
 
 # --- Systemd setup (only if not development) ---
 if [ "$DEVELOPMENT" = "false" ]; then
@@ -124,7 +117,7 @@ After=network.target mysql.service
 User=root
 WorkingDirectory=$(pwd)
 Environment="PATH=$(pwd)/venv/bin"
-ExecStart=$(pwd)/venv/bin/flask run --host=0.0.0.0 --port=5000
+ExecStart=$(pwd)/venv/bin/flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
 Restart=always
 RestartSec=5
 StandardOutput=append:$(pwd)/logs/autoshop.log
@@ -153,11 +146,11 @@ echo "---------------------------------------------"
 if [ "$DEVELOPMENT" = "true" ]; then
   echo "To start the app manually:"
   echo "  source venv/bin/activate"
-  echo "  flask run --host=0.0.0.0"
+  echo "  flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000"
 else
   echo "App is now managed by systemd:"
   echo "  systemctl status autoshop"
   echo "  systemctl restart autoshop"
 fi
 echo ""
-echo "🎉 Visit http://<server-ip>:5000/setup to configure your shop!"
+echo "🎉 Visit http://<server-ip>:5000"

@@ -14,12 +14,16 @@ def get_customers_paginated(page: int, per_page: int = 10):
     )
 
 
-def get_customer(customer_id: int):
-    return Customer.query.get_or_404(customer_id)
-
-
-def create_customer(name: str, email: str | None = None, phone: str | None = None):
+def create_customer(name, email=None, phone=None):
     customer = Customer(name=name, email=email, phone=phone)
     db.session.add(customer)
     db.session.commit()
     return customer
+
+
+def get_customer(customer_id: int):
+    return Customer.query.get_or_404(customer_id)
+
+
+def get_all_customers():
+    return Customer.query.order_by(Customer.name).all()

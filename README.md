@@ -23,25 +23,12 @@ See `docs/architecture.md`.
 
 See `docs/setup.md`.
 
-## Demo quickstart
-
-After installation, initialize and seed the database with demo records:
+## Quick Start
 
 ```zsh
-flask db upgrade
-flask seed-demo-data
-python run.py
+cp .env.example .env
+flask --app autoshop_crm:create_app db upgrade
+flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
 ```
 
-The seed command creates:
-- one login user (`demo` / `demo123` by default)
-- several customers
-- multiple vehicles per customer
-- jobs with mixed statuses (`open`, `in_progress`, `completed`, `on_hold`)
-
-You can also override demo credentials:
-
-```zsh
-flask seed-demo-data --username shopadmin --password 'ChangeMe123!'
-```
-
+Use `DATABASE_URL` in `.env` as the canonical DB connection setting.

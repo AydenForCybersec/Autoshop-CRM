@@ -22,36 +22,20 @@ cp .env.example .env
 
 SECRET_KEY
 DATABASE_URL
+FLASK_APP
+
+`DATABASE_URL` is the canonical database setting used by the app.
+Example for local MySQL:
+
+```zsh
+DATABASE_URL=mysql+mysqlclient://autoshop_user:your_db_password@localhost/autoshop
+```
 
 ## Initialize Database
 ```zsh
-flask db upgrade
+flask --app autoshop_crm:create_app db upgrade
 ```
 Run the App
 ```zsh
-python run.py
+flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
 ```
-
-
-## Demo quickstart
-
-Use the built-in CLI seed command to create realistic demo data:
-
-```zsh
-flask db upgrade
-flask seed-demo-data
-python run.py
-```
-
-This inserts:
-- one login user (`demo` / `demo123` by default)
-- several customers
-- vehicles for each customer
-- jobs in mixed statuses (`open`, `in_progress`, `completed`, `on_hold`)
-
-Optional: customize the login credentials when seeding:
-
-```zsh
-flask seed-demo-data --username shopadmin --password 'ChangeMe123!'
-```
-
