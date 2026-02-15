@@ -1,0 +1,20 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Page Not Found | {{ app_name }}{% endblock %}
+
+{% block content %}
+<section class="hero-panel compact">
+    <p class="eyebrow">Navigation</p>
+    <h1>That page is not in the service lane.</h1>
+    <p class="subcopy">The address may be outdated, moved, or typed incorrectly.</p>
+</section>
+
+<section class="panel not-found-panel">
+    <p class="entity-meta">Try one of these instead:</p>
+    <div class="not-found-actions">
+        <a class="btn btn-primary" href="{{ url_for('dashboard.index') }}">Back to Dashboard</a>
+        <a class="btn btn-secondary" href="{{ url_for('customers.list_customers') }}">Open Customers</a>
+        <a class="btn btn-secondary" href="{{ url_for('help.index') }}">View Help Center</a>
+    </div>
+</section>
+{% endblock %}

@@ -44,6 +44,7 @@
         </div>
 
         <form method="post" action="{{ url_for('vehicles.create') }}" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="customer_id" value="{{ customer.id }}">
 
             <label class="field">

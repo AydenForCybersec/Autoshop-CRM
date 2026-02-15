@@ -10,7 +10,7 @@ Admins and developers running maintenance commands.
 1. Run tests: `pytest`
 2. Apply DB changes: `flask --app autoshop_crm:create_app db upgrade`
 3. Use helper scripts:
-   - `scripts/setup.sh` for host bootstrap
+   - `scripts/setup.sh` for host bootstrap (creates a non-root Gunicorn service in production mode)
    - `scripts/backup_db.sh` for DB backup
    - `scripts/uninstall.sh` for local reset
 

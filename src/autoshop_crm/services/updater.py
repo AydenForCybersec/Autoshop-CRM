@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
+
+from .time import utc_now_aware
 
 
 class UpdateError(RuntimeError):
@@ -40,6 +42,7 @@ class UpdateManager:
         command_timeout: int = 300,
         post_update_commands: tuple[str, ...] = (),
         post_rollback_commands: tuple[str, ...] = (),
+        allowed_command_prefixes: tuple[str, ...] = (),
     ) -> None:
         self.repo_path = repo_path.resolve()
         self.instance_path = instance_path.resolve()
@@ -50,6 +53,7 @@ class UpdateManager:
         self.command_timeout = max(30, command_timeout)
         self.post_update_commands = tuple(post_update_commands)
         self.post_rollback_commands = tuple(post_rollback_commands)
+        self.allowed_command_prefixes = tuple(prefix.strip() for prefix in allowed_command_prefixes if prefix.strip())
         self.history_path = self.instance_path / "update_history.json"
         self.lock_path = self.instance_path / "update.lock"
 
@@ -214,10 +218,14 @@ class UpdateManager:
             command_text = command.strip()
             if not command_text:
                 continue
+            command_parts = shlex.split(command_text)
+            if not command_parts:
+                continue
+            if not self._is_allowed_command(command_parts):
+                raise UpdateError("Post-update command is not in the allowed command prefix list.")
             result = subprocess.run(
-                command_text,
+                command_parts,
                 cwd=self.repo_path,
-                shell=True,
                 timeout=self.command_timeout,
                 check=False,
                 text=True,
@@ -228,11 +236,22 @@ class UpdateManager:
                 output = result.stderr.strip() or result.stdout.strip() or "Command failed"
                 raise UpdateError(f"Post-update command failed: {output}")
 
+    def _is_allowed_command(self, command_parts: list[str]) -> bool:
+        if not self.allowed_command_prefixes:
+            return False
+        for prefix in self.allowed_command_prefixes:
+            prefix_parts = shlex.split(prefix)
+            if not prefix_parts:
+                continue
+            if command_parts[: len(prefix_parts)] == prefix_parts:
+                return True
+        return False
+
     def _history_entry(self, commit: str) -> dict[str, str]:
         return {
             "commit": commit,
             "short_commit": commit[:8],
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "timestamp_utc": utc_now_aware().isoformat(),
         }
 
     def _load_history(self) -> list[dict[str, str]]:

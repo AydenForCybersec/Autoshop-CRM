@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from ..models.job import Job
 from ..models.vehicle import Vehicle
+from .time import utc_now_aware
 
 
 def _pdf_escape(value: str) -> str:
@@ -16,7 +15,7 @@ def _pdf_escape(value: str) -> str:
 def build_vehicle_history_pdf(vehicle: Vehicle, jobs: list[Job], shop_name: str) -> bytes:
     """Build a simple one-page PDF with vehicle service history."""
     lines: list[str] = []
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    now = utc_now_aware().strftime("%Y-%m-%d %H:%M UTC")
     title = f"{vehicle.year or 'Year N/A'} {vehicle.make} {vehicle.model}".strip()
 
     lines.append(shop_name or "Autoshop CRM")

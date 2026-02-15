@@ -519,12 +519,37 @@ select:focus {
 }
 
 .flash-item {
-    border: 1px solid #efc4c4;
-    background: #fff2f2;
-    color: var(--danger);
+    border: 1px solid var(--line);
+    background: var(--surface-soft);
+    color: var(--text);
     border-radius: 10px;
     padding: 0.65rem 0.75rem;
     font-weight: 600;
+}
+
+.flash-success {
+    border-color: color-mix(in oklab, var(--success), white 70%);
+    background: color-mix(in oklab, var(--success), white 92%);
+    color: color-mix(in oklab, var(--success), black 25%);
+}
+
+.flash-error {
+    border-color: color-mix(in oklab, var(--danger), white 70%);
+    background: color-mix(in oklab, var(--danger), white 92%);
+    color: color-mix(in oklab, var(--danger), black 20%);
+}
+
+.flash-warning {
+    border-color: color-mix(in oklab, var(--warning), white 65%);
+    background: color-mix(in oklab, var(--warning), white 90%);
+    color: color-mix(in oklab, var(--warning), black 20%);
+}
+
+.flash-info,
+.flash-message {
+    border-color: color-mix(in oklab, var(--brand), white 70%);
+    background: color-mix(in oklab, var(--brand), white 93%);
+    color: var(--brand-strong);
 }
 
 .auth-panel {
@@ -658,6 +683,17 @@ select:focus {
     align-items: baseline;
     justify-content: space-between;
     gap: 0.5rem;
+}
+
+.not-found-panel {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.not-found-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
 }
 
 .settings-permission-grid {

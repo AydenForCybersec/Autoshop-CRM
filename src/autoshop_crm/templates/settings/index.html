@@ -19,6 +19,7 @@
 
 {% if active_tab == "business" %}
 <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="update_business">
     <input type="hidden" name="active_tab" value="business">
     <section class="panel">
@@ -61,6 +62,7 @@
 {% if active_tab == "theme" %}
 {% if can('manage_theme') %}
 <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="action" value="update_theme">
     <input type="hidden" name="active_tab" value="theme">
     <section class="layout-two-col">
@@ -171,6 +173,7 @@
             <span class="chip">Access Accounts</span>
         </div>
         <form method="post" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="create_user">
             <input type="hidden" name="active_tab" value="users">
 
@@ -208,6 +211,7 @@
                     </header>
 
                     <form method="post" class="form-grid">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="action" value="update_user">
                         <input type="hidden" name="active_tab" value="users">
                         <input type="hidden" name="user_id" value="{{ user.id }}">
@@ -230,6 +234,7 @@
                     </form>
 
                     <form method="post" class="form-grid">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="action" value="reset_password">
                         <input type="hidden" name="active_tab" value="users">
                         <input type="hidden" name="user_id" value="{{ user.id }}">
@@ -274,6 +279,7 @@
                 {% else %}
                     {% set effective = user.get_effective_permissions() %}
                     <form method="post" class="form-grid">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="action" value="update_permissions">
                         <input type="hidden" name="active_tab" value="permissions">
                         <input type="hidden" name="user_id" value="{{ user.id }}">

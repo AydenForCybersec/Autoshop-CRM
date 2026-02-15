@@ -8,5 +8,6 @@ SQLAlchemy
 alembic
 Werkzeug
 Flask-SQLAlchemy
+gunicorn
 psutil
 pytest

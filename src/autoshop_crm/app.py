@@ -1,11 +1,11 @@
 """Flask application factory and blueprint wiring."""
 
 from sqlalchemy import inspect
-from flask import Flask, current_app, redirect, request, url_for
+from flask import Flask, current_app, redirect, render_template, request, url_for
 from flask_login import current_user, logout_user
 
 from .config import get_config
-from .extensions import db, migrate, login_manager
+from .extensions import csrf, db, migrate, login_manager
 from .models.settings import BusinessSettings
 from .models.ui_preference import AppPreference
 from .models.user import User
@@ -35,6 +35,7 @@ def create_app() -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    csrf.init_app(app)
 
     # Register CLI commands
     register_commands(app)
@@ -114,12 +115,17 @@ def create_app() -> Flask:
             return redirect(url_for("auth.setup_admin"))
 
         if has_user and not current_user.is_authenticated and endpoint != "auth.login_view":
-            return redirect(url_for("auth.login_view"))
+            return redirect(url_for("auth.login_view", next=request.full_path))
 
         if current_user.is_authenticated and not current_user.is_active:
             logout_user()
             return redirect(url_for("auth.login_view"))
 
         return None
+
+    @app.errorhandler(404)
+    def not_found(_error):
+        """Render a branded 404 page."""
+        return render_template("errors/404.html"), 404
 
     return app

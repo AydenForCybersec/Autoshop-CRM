@@ -15,19 +15,26 @@ Admins and developers configuring runtime.
    - `FLASK_ENV` (`development` or `production`)
    - `HOST`, `PORT`, `LOG_FILE` (if used in your host scripts)
    - Update manager:
-     - `UPDATE_ENABLED` (`true`/`false`, default `true`)
+     - `UPDATE_ENABLED` (`true`/`false`, default `false` in production; `true` in development)
      - `UPDATE_REPO_PATH` (git checkout path; defaults to project root)
      - `UPDATE_REMOTE` (default `origin`)
      - `UPDATE_BRANCH` (optional; defaults to current checked-out branch)
+     - `UPDATE_LOCAL_ONLY` (`true`/`false`, default `true`; restrict updates page to local requests)
+     - `UPDATE_CONFIRM_PHRASE` (required phrase for apply/rollback actions, default `CONFIRM`)
      - `UPDATE_ALLOW_DIRTY` (`true`/`false`, default `false`)
      - `UPDATE_ROLLBACK_LIMIT` (default `6`)
      - `UPDATE_COMMAND_TIMEOUT` (seconds, default `300`)
-     - `UPDATE_POST_UPDATE_COMMANDS` (comma-separated shell commands)
-     - `UPDATE_POST_ROLLBACK_COMMANDS` (comma-separated shell commands)
+     - `UPDATE_POST_UPDATE_COMMANDS` (comma-separated commands)
+     - `UPDATE_POST_ROLLBACK_COMMANDS` (comma-separated commands)
+     - `UPDATE_ALLOWED_COMMAND_PREFIXES` (comma-separated allowed command prefixes for post commands)
+   - Login throttling:
+     - `AUTH_MAX_ATTEMPTS` (default `5`)
+     - `AUTH_WINDOW_SECONDS` (default `300`)
+     - `AUTH_LOCKOUT_SECONDS` (default `900`)
 
 ## If this fails
 - Invalid DB URL: test connection with DB client first.
-- Secret key missing: app may start with weak fallback in development only.
+- Secret key missing: app generates a random key at boot, which rotates sessions after restart.
 
 ## Done when
 - All required variables are present and correct for your environment.

@@ -34,3 +34,17 @@ def test_update_job_status(app):
 
     update_job_status(job, "completed")
     assert job.status == "completed"
+
+
+def test_update_job_status_rejects_invalid_value(app):
+    """Unknown statuses should be rejected."""
+    customer = create_customer("Status Tester")
+    vehicle = create_vehicle(customer.id, "Ford", "Fusion")
+    job = create_job(vehicle.id, "Inspection")
+
+    try:
+        update_job_status(job, "done")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Expected ValueError for invalid job status")

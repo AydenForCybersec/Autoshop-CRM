@@ -48,22 +48,39 @@
             <h2>Actions</h2>
             <span class="chip">Controlled</span>
         </div>
+        <p class="entity-meta">Type <code>{{ config.UPDATE_CONFIRM_PHRASE }}</code> before applying or rolling back.</p>
         <div class="form-grid">
             <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="check">
                 <button type="submit" class="btn btn-secondary">Check for Updates</button>
             </form>
             <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="apply">
-                <button type="submit" class="btn btn-primary">Apply Latest Update</button>
+                <label class="field">
+                    <span>Confirmation Phrase</span>
+                    <input type="text" name="confirm_text" autocomplete="off" placeholder="{{ config.UPDATE_CONFIRM_PHRASE }}">
+                </label>
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Apply latest update now?')">Apply Latest Update</button>
             </form>
             <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="rollback_1">
-                <button type="submit" class="btn btn-secondary">Rollback 1 Update</button>
+                <label class="field">
+                    <span>Confirmation Phrase</span>
+                    <input type="text" name="confirm_text" autocomplete="off" placeholder="{{ config.UPDATE_CONFIRM_PHRASE }}">
+                </label>
+                <button type="submit" class="btn btn-secondary" onclick="return confirm('Rollback the most recent update?')">Rollback 1 Update</button>
             </form>
             <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="rollback_2">
-                <button type="submit" class="btn btn-secondary">Rollback 2 Updates</button>
+                <label class="field">
+                    <span>Confirmation Phrase</span>
+                    <input type="text" name="confirm_text" autocomplete="off" placeholder="{{ config.UPDATE_CONFIRM_PHRASE }}">
+                </label>
+                <button type="submit" class="btn btn-secondary" onclick="return confirm('Rollback the last two updates?')">Rollback 2 Updates</button>
             </form>
         </div>
     </article>

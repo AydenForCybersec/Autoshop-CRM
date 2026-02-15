@@ -163,18 +163,26 @@ flask --app autoshop_crm:create_app db upgrade
 if [ "$DEVELOPMENT" = "false" ]; then
   echo "🧩 Setting up systemd service..."
 
+  APP_USER="autoshop"
+  NOLOGIN_SHELL="$(command -v nologin || echo /usr/sbin/nologin)"
+  if ! id -u "$APP_USER" >/dev/null 2>&1; then
+    useradd --system --create-home --shell "$NOLOGIN_SHELL" "$APP_USER"
+  fi
+  chown -R "$APP_USER":"$APP_USER" "$(pwd)"
+
   SERVICE_FILE="/etc/systemd/system/autoshop.service"
   cat > "$SERVICE_FILE" <<EOF
 [Unit]
-Description=AutoShop CRM Flask Service
+Description=AutoShop CRM Gunicorn Service
 After=network.target ${DB_SERVICE}.service
 
 [Service]
-User=root
+User=${APP_USER}
+Group=${APP_USER}
 WorkingDirectory=$(pwd)
 Environment="PATH=$(pwd)/venv/bin"
 Environment="PYTHONPATH=$(pwd)/src"
-ExecStart=$(pwd)/venv/bin/flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
+ExecStart=$(pwd)/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:8000 "autoshop_crm:create_app()"
 Restart=always
 RestartSec=5
 StandardOutput=append:$(pwd)/logs/autoshop.log
@@ -198,7 +206,7 @@ echo "✅ Setup Complete!"
 echo "---------------------------------------------"
 echo " Database: ${DB_NAME}"
 echo " User:     ${DB_USER}"
-echo " Password: ${DB_PASS}"
+echo " Password: [saved in .env only]"
 echo "---------------------------------------------"
 if [ "$DEVELOPMENT" = "true" ]; then
   echo "To start the app manually:"
@@ -210,6 +218,7 @@ else
   echo "App is now managed by systemd:"
   echo "  systemctl status autoshop"
   echo "  systemctl restart autoshop"
+  echo "  Reverse-proxy target: 127.0.0.1:8000"
 fi
 echo ""
-echo "🎉 Visit http://<server-ip>:5000"
+echo "🎉 Visit http://<server-ip>:5000 (dev) or your reverse-proxy URL (prod)"

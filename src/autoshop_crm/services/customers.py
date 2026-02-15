@@ -9,6 +9,7 @@ from sqlalchemy import func, or_
 
 from ..extensions import db
 from ..models.customer import Customer
+from .time import utc_now_naive
 
 
 def get_all_customers() -> list[Customer]:
@@ -16,9 +17,21 @@ def get_all_customers() -> list[Customer]:
     return Customer.query.order_by(Customer.name).all()
 
 
-def get_customers_paginated(page: int, per_page: int = 10):
+def get_customers_paginated(page: int, per_page: int = 10, search: str | None = None):
     """Return a pagination object for customer listing pages."""
-    return Customer.query.order_by(Customer.name).paginate(
+    query = Customer.query
+    search_value = (search or "").strip()
+    if search_value:
+        like = f"%{search_value}%"
+        query = query.filter(
+            or_(
+                Customer.name.ilike(like),
+                Customer.email.ilike(like),
+                Customer.phone.ilike(like),
+            )
+        )
+
+    return query.order_by(Customer.name).paginate(
         page=page,
         per_page=per_page,
         error_out=False,
@@ -52,7 +65,7 @@ def create_customer(
 ) -> Customer:
     """Create and persist a customer record."""
     normalized_email = email.strip().lower() if email and email.strip() else None
-    customer = Customer(name=name.strip(), email=normalized_email, phone=phone, created_at=created_at or datetime.utcnow())
+    customer = Customer(name=name.strip(), email=normalized_email, phone=phone, created_at=created_at or utc_now_naive())
     db.session.add(customer)
     db.session.commit()
     return customer

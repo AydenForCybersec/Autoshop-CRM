@@ -16,6 +16,7 @@
             <span class="chip">{{ duplicates|length }} found</span>
         </div>
         <form method="post" action="{{ url_for('customers.create') }}" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="name" value="{{ pending.name }}">
             <input type="hidden" name="email" value="{{ pending.email }}">
             <input type="hidden" name="phone" value="{{ pending.phone }}">

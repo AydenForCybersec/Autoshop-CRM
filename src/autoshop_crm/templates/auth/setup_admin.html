@@ -13,6 +13,7 @@
 <section class="panel auth-panel">
     <h2>Initial Admin Setup</h2>
     <form method="post" enctype="multipart/form-data" class="form-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <label class="field">
             <span>Business Name</span>
             <input type="text" name="business_name" placeholder="e.g. Northside Auto" value="{{ setup_business_name|default('') }}" required>

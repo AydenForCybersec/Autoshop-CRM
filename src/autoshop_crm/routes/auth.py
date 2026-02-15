@@ -1,5 +1,7 @@
 """Authentication HTTP routes."""
 
+from urllib.parse import urlsplit
+
 from sqlalchemy import inspect
 from flask.typing import ResponseReturnValue
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
@@ -10,8 +12,22 @@ from ..models.settings import BusinessSettings
 from ..models.user import User
 from ..services.branding import save_business_logo
 from ..services.auth import login, logout
+from ..services.login_throttle import clear_attempts, get_retry_after_seconds, record_failed_attempt
 
 auth_bp = Blueprint("auth", __name__)
+
+
+def _safe_next_url(raw_target: str | None) -> str | None:
+    """Return a local redirect target or ``None`` when unsafe."""
+    target = (raw_target or "").strip()
+    if not target:
+        return None
+    parts = urlsplit(target)
+    if parts.scheme or parts.netloc:
+        return None
+    if not parts.path.startswith("/") or parts.path.startswith("//"):
+        return None
+    return target
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -23,18 +39,48 @@ def login_view() -> ResponseReturnValue:
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
+    requested_next = request.args.get("next", "") or request.form.get("next", "")
+
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
+        client_ip = (request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown").split(",")[0].strip()
+
+        retry_after = get_retry_after_seconds(
+            username=username,
+            client_ip=client_ip,
+            window_seconds=current_app.config["AUTH_WINDOW_SECONDS"],
+        )
+        if retry_after > 0:
+            flash(f"Too many login attempts. Try again in {retry_after} seconds.", "warning")
+            return render_template("auth/login.html", login_next=requested_next)
+
         user = User.query.filter_by(username=username).first()
         if user and not user.is_active:
-            flash("This account is disabled. Contact an administrator.")
+            flash("This account is disabled. Contact an administrator.", "warning")
         elif login(username, password):
-            return redirect(url_for("dashboard.index"))
+            clear_attempts(username=username, client_ip=client_ip)
+            return redirect(_safe_next_url(requested_next) or url_for("dashboard.index"))
         else:
-            flash("Invalid username or password")
+            retry_seconds = record_failed_attempt(
+                username=username,
+                client_ip=client_ip,
+                max_attempts=current_app.config["AUTH_MAX_ATTEMPTS"],
+                window_seconds=current_app.config["AUTH_WINDOW_SECONDS"],
+                lockout_seconds=current_app.config["AUTH_LOCKOUT_SECONDS"],
+            )
+            current_app.logger.warning(
+                "Failed login attempt user=%s ip=%s locked=%s",
+                username or "<blank>",
+                client_ip,
+                retry_seconds > 0,
+            )
+            if retry_seconds > 0:
+                flash(f"Too many login attempts. Try again in {retry_seconds} seconds.", "warning")
+            else:
+                flash("Invalid username or password", "error")
 
-    return render_template("auth/login.html")
+    return render_template("auth/login.html", login_next=requested_next)
 
 
 @auth_bp.route("/logout")
@@ -126,7 +172,7 @@ def setup_admin() -> ResponseReturnValue:
         db.session.add(settings)
         db.session.commit()
 
-        flash("Setup complete. Sign in with your new admin account.")
+        flash("Setup complete. Sign in with your new admin account.", "success")
         return redirect(url_for("auth.login_view"))
 
     return render_template("auth/setup_admin.html")

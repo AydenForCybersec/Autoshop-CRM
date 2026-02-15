@@ -1,8 +1,7 @@
 """Vehicle ORM model."""
 
-from datetime import datetime
-
 from ..extensions import db
+from ..services.time import utc_now_naive
 
 
 class Vehicle(db.Model):
@@ -18,7 +17,7 @@ class Vehicle(db.Model):
     year = db.Column(db.Integer)
     vin = db.Column(db.String(17))
     license_plate = db.Column("plate", db.String(30))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_now_naive, nullable=False)
 
     customer = db.relationship("Customer", back_populates="vehicles")
     jobs = db.relationship("Job", back_populates="vehicle")

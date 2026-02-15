@@ -7,8 +7,7 @@
     <p class="eyebrow">Vehicle Profile</p>
     <h1>{{ vehicle.year or "Year N/A" }} {{ vehicle.make }} {{ vehicle.model }}</h1>
     <div class="meta-row">
-        <span class="chip">Vehicle ID #{{ vehicle.id }}</span>
-        <span class="chip">Customer ID #{{ vehicle.customer_id }}</span>
+        <span class="chip">Owner: {{ vehicle.customer.name if vehicle.customer else "Unknown customer" }}</span>
         <span class="chip">VIN: {{ vehicle.vin or "Not provided" }}</span>
         <span class="chip">Plate: {{ vehicle.license_plate or "Not provided" }}</span>
         <span class="chip">Created: {{ vehicle.created_at.strftime('%Y-%m-%d') if vehicle.created_at else "Unknown" }}</span>
@@ -38,6 +37,7 @@
                         </span>
 
                         <form method="post" action="{{ url_for('jobs.update_status', job_id=job.id) }}" class="inline-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <label class="sr-only" for="status-{{ job.id }}">Update status</label>
                             <select id="status-{{ job.id }}" name="status">
                                 <option value="open" {% if job.status == 'open' %}selected{% endif %}>Open</option>
@@ -62,6 +62,7 @@
         </div>
 
         <form method="post" action="{{ url_for('jobs.create') }}" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="vehicle_id" value="{{ vehicle.id }}">
 
             <label class="field">

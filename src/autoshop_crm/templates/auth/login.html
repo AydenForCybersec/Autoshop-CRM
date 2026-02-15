@@ -12,6 +12,10 @@
 <section class="panel auth-panel">
     <h2>Sign in</h2>
     <form method="post" class="form-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if login_next %}
+            <input type="hidden" name="next" value="{{ login_next }}">
+        {% endif %}
         <label class="field">
             <span>Username</span>
             <input type="text" name="username" placeholder="e.g. shopadmin" required>

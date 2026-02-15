@@ -47,5 +47,11 @@
 - `docs/reference/permission-matrix.md`
 - `docs/reference/cli-and-scripts.md`
 
+### Reviews
+- `docs/reviews/professional-codebase-review-2026-02-15.md`
+
 ### Policy
 - `docs/policies/doc-writing-style.md`
+
+### Legacy Redirects
+- `docs/legacy-pages.md`

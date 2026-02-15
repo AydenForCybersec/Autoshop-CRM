@@ -9,6 +9,7 @@ from sqlalchemy import and_, func, or_
 
 from ..extensions import db
 from ..models.vehicle import Vehicle
+from .time import utc_now_naive
 
 
 def get_vehicle(vehicle_id: int) -> Vehicle:
@@ -75,7 +76,7 @@ def create_vehicle(
         year=year,
         vin=normalized_vin,
         license_plate=normalized_plate,
-        created_at=created_at or datetime.utcnow(),
+        created_at=created_at or utc_now_naive(),
     )
     db.session.add(vehicle)
     db.session.commit()

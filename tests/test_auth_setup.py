@@ -67,7 +67,7 @@ def test_setup_creates_admin_and_business_then_requires_login(setup_client, setu
 
     locked_response = setup_client.get("/customers/", follow_redirects=False)
     assert locked_response.status_code == 302
-    assert locked_response.headers["Location"].endswith("/login")
+    assert locked_response.headers["Location"].startswith("/login")
 
     login_response = setup_client.post(
         "/login",
@@ -98,3 +98,47 @@ def test_setup_rejects_invalid_logo_extension(setup_client, setup_app):
     with setup_app.app_context():
         assert User.query.count() == 0
         assert BusinessSettings.query.count() == 0
+
+
+def test_login_honors_safe_next_redirect(setup_client):
+    """Login should return users to a safe local next URL when provided."""
+    setup_client.post(
+        "/setup-admin",
+        data={
+            "business_name": "Northside Auto",
+            "username": "owner",
+            "password": "supersecure",
+            "confirm_password": "supersecure",
+        },
+        follow_redirects=False,
+    )
+
+    response = setup_client.post(
+        "/login?next=/customers/",
+        data={"username": "owner", "password": "supersecure", "next": "/customers/"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/customers/")
+
+
+def test_login_ignores_unsafe_next_redirect(setup_client):
+    """External next URLs should be ignored in favor of dashboard redirect."""
+    setup_client.post(
+        "/setup-admin",
+        data={
+            "business_name": "Northside Auto",
+            "username": "owner",
+            "password": "supersecure",
+            "confirm_password": "supersecure",
+        },
+        follow_redirects=False,
+    )
+
+    response = setup_client.post(
+        "/login?next=https://evil.example",
+        data={"username": "owner", "password": "supersecure", "next": "https://evil.example"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/")

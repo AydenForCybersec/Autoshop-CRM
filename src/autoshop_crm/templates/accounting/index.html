@@ -45,7 +45,11 @@
             {% for job in jobs %}
                 <li class="entity-item job-item">
                     <div class="job-main">
-                        <span class="entity-title">#{{ job.id }} · Vehicle #{{ job.vehicle_id }} · {{ job.status|replace('_', ' ')|title }}</span>
+                        <span class="entity-title">
+                            {{ (job.vehicle.customer.name if job.vehicle and job.vehicle.customer else "Unknown Customer") }}
+                            · {{ (job.vehicle.year ~ " " ~ job.vehicle.make ~ " " ~ job.vehicle.model) if job.vehicle else "Unknown Vehicle" }}
+                            · {{ job.status|replace('_', ' ')|title }}
+                        </span>
                     </div>
                     <div class="job-sub">
                         <span class="entity-meta">

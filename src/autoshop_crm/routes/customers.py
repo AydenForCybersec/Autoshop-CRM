@@ -21,12 +21,14 @@ customers_bp = Blueprint("customers", __name__)
 def list_customers() -> ResponseReturnValue:
     """Render a paginated list of customers."""
     page = request.args.get("page", 1, type=int)
-    pagination = get_customers_paginated(page)
+    search = request.args.get("q", "").strip()
+    pagination = get_customers_paginated(page, search=search)
 
     return render_template(
         "customers/list.html",
         customers=pagination.items,
         pagination=pagination,
+        search_query=search,
     )
 
 @customers_bp.route("/<int:customer_id>")
@@ -51,7 +53,7 @@ def create() -> ResponseReturnValue:
     try:
         created_at = parse_optional_datetime(created_at_raw)
     except ValueError as exc:
-        flash(str(exc))
+        flash(str(exc), "error")
         return redirect(url_for("customers.list_customers"))
 
     duplicates = find_customer_duplicates(name=name, email=email, phone=phone)
@@ -70,9 +72,9 @@ def create() -> ResponseReturnValue:
         existing_customer = get_customer(selected_customer_id)
         if duplicate_action == "merge_existing":
             merge_customer_data(existing_customer, name=name, email=email, phone=phone, created_at=created_at)
-            flash("Customer data merged into existing record.")
+            flash("Customer data merged into existing record.", "success")
         else:
-            flash("Used existing customer record.")
+            flash("Used existing customer record.", "info")
         return redirect(url_for("customers.customer_detail", customer_id=existing_customer.id))
 
     if duplicate_action == "add_new" and email:
@@ -81,9 +83,9 @@ def create() -> ResponseReturnValue:
             None,
         )
         if matching_email:
-            flash("Email already exists on another customer. New customer created without email.")
+            flash("Email already exists on another customer. New customer created without email.", "warning")
             email = None
 
     create_customer(name, email, phone, created_at=created_at)
-    flash("Customer created.")
+    flash("Customer created.", "success")
     return redirect(url_for("customers.list_customers"))

@@ -6,7 +6,8 @@ from datetime import datetime
 from typing import Optional
 
 from ..extensions import db
-from ..models.job import Job
+from ..models.job import JOB_STATUSES, Job
+from .time import utc_now_naive
 
 
 def get_job(job_id: int) -> Job:
@@ -34,7 +35,7 @@ def create_job(
         vehicle_id=vehicle_id,
         description=description.strip(),
         cost=cost,
-        created_at=created_at or datetime.utcnow(),
+        created_at=created_at or utc_now_naive(),
     )
     db.session.add(job)
     db.session.commit()
@@ -43,6 +44,9 @@ def create_job(
 
 def update_job_status(job: Job, status: str) -> Job:
     """Update a job status and persist the change."""
-    job.status = status
+    normalized = (status or "").strip().lower()
+    if normalized not in JOB_STATUSES:
+        raise ValueError("Invalid job status.")
+    job.status = normalized
     db.session.commit()
     return job

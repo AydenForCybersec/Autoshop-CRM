@@ -148,9 +148,9 @@ def require_permission(permission: str) -> Callable[[PermissionFunc], Permission
                 return func(*args, **kwargs)
 
             if not current_user.is_authenticated:
-                return redirect(url_for("auth.login_view", next=request.url))
+                return redirect(url_for("auth.login_view", next=request.full_path))
 
-            flash("You do not have permission to access that section.")
+            flash("You do not have permission to access that section.", "warning")
             return redirect(url_for("dashboard.index"))
 
         return wrapped

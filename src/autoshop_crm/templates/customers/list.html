@@ -15,6 +15,13 @@
             <h2>Directory</h2>
             <span class="chip">{{ customers|length }} on this page</span>
         </div>
+        <form method="get" action="{{ url_for('customers.list_customers') }}" class="form-grid">
+            <label class="field">
+                <span>Search by name, email, or phone</span>
+                <input type="search" name="q" value="{{ search_query }}" placeholder="e.g. Jane, service@shop.com, (555) 123-4567">
+            </label>
+            <button type="submit" class="btn btn-secondary">Search</button>
+        </form>
 
         <ul class="entity-list">
             {% for customer in customers %}
@@ -29,7 +36,23 @@
             {% endfor %}
         </ul>
 
-        {% include "layouts/pagination.html" %}
+        {% if pagination.pages > 1 %}
+            <nav class="pagination" aria-label="Pagination">
+                {% if pagination.has_prev %}
+                    <a class="btn btn-secondary" href="{{ url_for('customers.list_customers', page=pagination.prev_num, q=search_query) }}">Previous</a>
+                {% else %}
+                    <span class="btn btn-disabled">Previous</span>
+                {% endif %}
+
+                <span class="page-indicator">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+
+                {% if pagination.has_next %}
+                    <a class="btn btn-secondary" href="{{ url_for('customers.list_customers', page=pagination.next_num, q=search_query) }}">Next</a>
+                {% else %}
+                    <span class="btn btn-disabled">Next</span>
+                {% endif %}
+            </nav>
+        {% endif %}
     </article>
 
     <article class="panel">
@@ -39,6 +62,7 @@
         </div>
 
         <form method="post" action="{{ url_for('customers.create') }}" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label class="field">
                 <span>Name</span>
                 <input type="text" name="name" placeholder="Customer full name" required>

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Optional
 
 from flask_login import UserMixin
@@ -10,6 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from ..extensions import db, login_manager
 from ..services.authorization import PERMISSIONS, apply_permission_overrides, normalize_role, resolve_role_permissions
+from ..services.time import utc_now_naive
 
 
 class User(UserMixin, db.Model):
@@ -26,7 +26,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(30), nullable=False, default="owner")
     permission_overrides = db.Column(db.JSON, nullable=False, default=dict)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now_naive)
 
     def set_password(self, password: str) -> None:
         """Hash and store a plaintext password."""

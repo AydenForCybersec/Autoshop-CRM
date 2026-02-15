@@ -25,6 +25,7 @@ Admins assigning feature access.
 | manage_users | Yes | Yes | No | No | No |
 | manage_permissions | Yes | Yes | No | No | No |
 | manage_theme | Yes | Yes | No | No | No |
+| manage_updates | Yes | Yes | No | No | No |
 
 ## If this fails
 - Users blocked unexpectedly: check custom overrides.

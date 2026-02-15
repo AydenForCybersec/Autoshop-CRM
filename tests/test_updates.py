@@ -89,7 +89,11 @@ def test_updates_apply_action_redirects_with_success_flash(updates_client, monke
     manager = FakeUpdateManager()
     monkeypatch.setattr("autoshop_crm.routes.updates.get_update_manager", lambda: manager)
 
-    response = updates_client.post("/updates", data={"action": "apply"}, follow_redirects=True)
+    response = updates_client.post(
+        "/updates",
+        data={"action": "apply", "confirm_text": "CONFIRM"},
+        follow_redirects=True,
+    )
 
     assert response.status_code == 200
     assert b"Update applied successfully" in response.data
@@ -100,7 +104,11 @@ def test_updates_rollback_two_calls_manager(updates_client, monkeypatch):
     manager = FakeUpdateManager()
     monkeypatch.setattr("autoshop_crm.routes.updates.get_update_manager", lambda: manager)
 
-    response = updates_client.post("/updates", data={"action": "rollback_2"}, follow_redirects=False)
+    response = updates_client.post(
+        "/updates",
+        data={"action": "rollback_2", "confirm_text": "CONFIRM"},
+        follow_redirects=False,
+    )
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/updates")
@@ -150,3 +158,14 @@ def test_mechanic_cannot_access_updates(updates_rbac_client):
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/")
+
+
+def test_updates_apply_requires_confirmation_phrase(updates_client, monkeypatch):
+    """Apply should be blocked without confirmation phrase."""
+    manager = FakeUpdateManager()
+    monkeypatch.setattr("autoshop_crm.routes.updates.get_update_manager", lambda: manager)
+
+    response = updates_client.post("/updates", data={"action": "apply"}, follow_redirects=True)
+
+    assert response.status_code == 200
+    assert b"Type the confirmation phrase before applying updates." in response.data

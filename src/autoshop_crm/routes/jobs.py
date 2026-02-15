@@ -32,7 +32,7 @@ def create() -> ResponseReturnValue:
     try:
         cost = float(cost_raw) if cost_raw else None
     except ValueError:
-        flash("Cost must be a valid number.")
+        flash("Cost must be a valid number.", "error")
         return redirect(url_for("vehicles.vehicle_detail", vehicle_id=vehicle_id))
 
     job = create_job(
@@ -49,5 +49,9 @@ def create() -> ResponseReturnValue:
 def update_status(job_id: int) -> ResponseReturnValue:
     """Update a job status and redirect to the parent vehicle page."""
     job = get_job(job_id)
-    update_job_status(job, request.form["status"])
+    try:
+        update_job_status(job, request.form.get("status", ""))
+        flash("Job status updated.", "success")
+    except ValueError:
+        flash("Invalid job status selected.", "error")
     return redirect(url_for("vehicles.vehicle_detail", vehicle_id=job.vehicle_id))
