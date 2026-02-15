@@ -1,6 +1,7 @@
 """Flask application factory and blueprint wiring."""
 
 import os
+from pathlib import Path
 
 from sqlalchemy import inspect
 from flask import Flask, current_app, redirect, render_template, request, url_for
@@ -37,6 +38,7 @@ def create_app() -> Flask:
         app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
     if os.getenv("DATABASE_URL"):
         app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+    app.config["SQLALCHEMY_DATABASE_URI"] = _normalize_sqlite_db_uri(app.config["SQLALCHEMY_DATABASE_URI"])
     _apply_production_runtime_settings(app)
 
     # Init extensions
@@ -150,3 +152,19 @@ def _apply_production_runtime_settings(app: Flask) -> None:
 
     if is_placeholder_secret(os.getenv("SECRET_KEY")):
         raise RuntimeError("SECRET_KEY must be explicitly set in production.")
+
+
+def _normalize_sqlite_db_uri(database_uri: str) -> str:
+    """Resolve relative sqlite DB paths from stable project root."""
+    if not database_uri.lower().startswith("sqlite:///"):
+        return database_uri
+
+    sqlite_target = database_uri.replace("sqlite:///", "", 1)
+    if not sqlite_target or sqlite_target == ":memory:":
+        return database_uri
+
+    target_path = Path(sqlite_target)
+    if not target_path.is_absolute():
+        project_root = Path(__file__).resolve().parents[2]
+        target_path = (project_root / target_path).resolve()
+    return f"sqlite:///{target_path.as_posix()}"

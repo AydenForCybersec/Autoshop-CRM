@@ -36,9 +36,10 @@ class Config:
 
     SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 
+    DEFAULT_SQLITE_PATH = Path(__file__).resolve().parents[2] / "autoshop.db"
     SQLALCHEMY_DATABASE_URI = os.getenv(
         "DATABASE_URL",
-        "sqlite:///autoshop.db",
+        f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}",
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

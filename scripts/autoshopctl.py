@@ -15,7 +15,7 @@ import subprocess
 import sys
 from urllib.parse import unquote, urlparse
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +24,7 @@ STATE_DIR = PROJECT_ROOT / ".autoshop"
 STATE_FILE = STATE_DIR / "install_state.json"
 DEFAULT_SERVICE_PATH = Path("/etc/systemd/system/autoshop.service")
 DEFAULT_SQLITE_URL = "sqlite:///autoshop.db"
+LEGACY_SQLITE_URL = "sqlite:///src/instance/autoshop.db"
 
 
 @dataclass
@@ -56,7 +57,7 @@ class InstallState:
 
     def save(self) -> None:
         STATE_DIR.mkdir(parents=True, exist_ok=True)
-        self.updated_at = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+        self.updated_at = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
         STATE_FILE.write_text(
             json.dumps(
                 {
@@ -338,6 +339,26 @@ def guess_db_kind(db_url: str | None) -> str:
     return "custom"
 
 
+def normalize_sqlite_db_url(db_url: str | None) -> str | None:
+    """Resolve relative sqlite URLs against the project root."""
+    if not db_url:
+        return db_url
+
+    lowered = db_url.lower()
+    if not lowered.startswith("sqlite:///"):
+        return db_url
+
+    sqlite_target = db_url.replace("sqlite:///", "", 1)
+    if not sqlite_target or sqlite_target == ":memory:":
+        return db_url
+
+    target_path = Path(sqlite_target)
+    if not target_path.is_absolute():
+        target_path = (PROJECT_ROOT / target_path).resolve()
+
+    return f"sqlite:///{target_path.as_posix()}"
+
+
 def redact_db_url(db_url: str) -> str:
     parsed = urlparse(db_url)
     if not parsed.password:
@@ -556,7 +577,7 @@ def merge_env(
     if env_path.exists() and not state.env_backup:
         backup_dir = STATE_DIR / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
-        backup_name = f"env.pre-setup.{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.bak"
+        backup_name = f"env.pre-setup.{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}.bak"
         backup_path = backup_dir / backup_name
         shutil.copy2(env_path, backup_path)
         state.env_backup = str(backup_path.relative_to(PROJECT_ROOT))
@@ -572,7 +593,8 @@ def merge_env(
     env_values["HOST"] = env_values.get("HOST", "0.0.0.0")
     env_values["PORT"] = env_values.get("PORT", "5000")
     env_values["LOG_FILE"] = env_values.get("LOG_FILE", "logs/app.log")
-    env_values["DATABASE_URL"] = db_url or env_values.get("DATABASE_URL") or DEFAULT_SQLITE_URL
+    resolved_db_url = db_url or env_values.get("DATABASE_URL") or DEFAULT_SQLITE_URL
+    env_values["DATABASE_URL"] = normalize_sqlite_db_url(resolved_db_url) or DEFAULT_SQLITE_URL
 
     if is_placeholder_secret(env_values.get("SECRET_KEY")):
         env_values["SECRET_KEY"] = secrets.token_hex(32)
@@ -900,6 +922,7 @@ def command_uninstall(args: argparse.Namespace) -> int:
             PROJECT_ROOT / "instance",
             PROJECT_ROOT / "logs",
             PROJECT_ROOT / "autoshop.db",
+            PROJECT_ROOT / "src/instance/autoshop.db",
         ])
 
     for rel in state.created_paths:
@@ -939,11 +962,13 @@ def command_uninstall(args: argparse.Namespace) -> int:
 
     env_values = parse_env_file(PROJECT_ROOT / ".env")
     db_url = args.db_url or env_values.get("DATABASE_URL")
-    if args.drop_db and not args.keep_data and db_url:
-        try:
-            maybe_drop_database(db_url)
-        except subprocess.CalledProcessError as exc:
-            info(f"Database drop failed ({exc}). Continue cleanup manually if needed.")
+    db_urls_to_drop = [db_url, LEGACY_SQLITE_URL]
+    if args.drop_db and not args.keep_data:
+        for candidate in [url for url in db_urls_to_drop if url]:
+            try:
+                maybe_drop_database(candidate)
+            except subprocess.CalledProcessError as exc:
+                info(f"Database drop failed ({exc}). Continue cleanup manually if needed.")
 
     if args.purge_system_packages:
         purge_system_packages(state)
