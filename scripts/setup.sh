@@ -5,7 +5,7 @@
 # Safe for both dev and production environments.
 # ================================================
 
-set -e
+set -euo pipefail
 
 echo "============================================"
 echo " 🚗 AutoShop CRM — Automated Setup"
@@ -77,6 +77,9 @@ EOF
 fi
 pip install -r requirements.txt
 
+# Ensure local src layout is importable for flask/pytest commands
+export PYTHONPATH="$(pwd)/src:${PYTHONPATH:-}"
+
 # --- Create instance folder ---
 mkdir -p instance/uploads logs
 
@@ -94,7 +97,11 @@ DEVELOPMENT=${DEVELOPMENT}
 HOST=0.0.0.0
 PORT=5000
 
+<<<<<<< HEAD
 DATABASE_URL=mysql+mysqlclient://${DB_USER}:${DB_PASS}@localhost/${DB_NAME}
+=======
+DATABASE_URL=mysql+mysqlconnector://${DB_USER}:${DB_PASS}@localhost/${DB_NAME}
+>>>>>>> 9ab98d99409adccf6864717740a5c3677ead61b2
 
 LOG_FILE=logs/app.log
 EOF
@@ -117,6 +124,10 @@ After=network.target mysql.service
 User=root
 WorkingDirectory=$(pwd)
 Environment="PATH=$(pwd)/venv/bin"
+<<<<<<< HEAD
+=======
+Environment="PYTHONPATH=$(pwd)/src"
+>>>>>>> 9ab98d99409adccf6864717740a5c3677ead61b2
 ExecStart=$(pwd)/venv/bin/flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000
 Restart=always
 RestartSec=5
@@ -146,7 +157,13 @@ echo "---------------------------------------------"
 if [ "$DEVELOPMENT" = "true" ]; then
   echo "To start the app manually:"
   echo "  source venv/bin/activate"
+<<<<<<< HEAD
   echo "  flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000"
+=======
+  echo "  export PYTHONPATH=$(pwd)/src:$PYTHONPATH"
+  echo "  flask --app autoshop_crm:create_app run --host=0.0.0.0 --port=5000"
+  echo "  pytest"
+>>>>>>> 9ab98d99409adccf6864717740a5c3677ead61b2
 else
   echo "App is now managed by systemd:"
   echo "  systemctl status autoshop"

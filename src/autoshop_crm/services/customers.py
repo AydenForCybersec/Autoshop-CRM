@@ -2,6 +2,10 @@ from ..extensions import db
 from ..models.customer import Customer
 
 
+def get_all_customers():
+    return Customer.query.order_by(Customer.name).all()
+
+
 def get_customers_paginated(page: int, per_page: int = 10):
     return Customer.query.order_by(Customer.name).paginate(
         page=page,
