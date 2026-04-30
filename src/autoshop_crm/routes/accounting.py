@@ -21,6 +21,20 @@ from ..models.settings import BusinessSettings
 from ..services.authorization import require_permission
 from ..services.dates import parse_optional_datetime
 
+
+class _JobRow:
+    """Thin wrapper that precomputes per-job totals for the accounting template."""
+
+    __slots__ = ("job", "parts_total", "labor_total", "subtotal", "tax_amount", "total")
+
+    def __init__(self, job: Job, tax_rate: float) -> None:
+        self.job = job
+        self.parts_total = job.parts_total
+        self.labor_total = job.labor_total
+        self.subtotal = round(self.parts_total + self.labor_total, 2)
+        self.tax_amount = round(self.subtotal * tax_rate / 100, 2)
+        self.total = round(self.subtotal + self.tax_amount, 2)
+
 accounting_bp = Blueprint("accounting", __name__)
 
 
@@ -58,11 +72,28 @@ def index() -> ResponseReturnValue:
     except ValueError as exc:
         flash(str(exc))
         return redirect(url_for("accounting.index"))
-    jobs_query = _jobs_query(start_dt, end_dt)
-    jobs = jobs_query.order_by(Job.created_at.desc(), Job.id.desc()).limit(5).all()
+    settings = BusinessSettings.query.first()
+    tax_rate = (settings.sales_tax_rate or 0.0) if settings else 0.0
 
-    totals_query = _jobs_query(start_dt, end_dt)
-    total_revenue = totals_query.with_entities(func.sum(Job.cost)).filter(Job.status == "completed").scalar() or 0.0
+    recent_jobs = (
+        _jobs_query(start_dt, end_dt)
+        .options(joinedload(Job.parts), joinedload(Job.labor))
+        .order_by(Job.created_at.desc(), Job.id.desc())
+        .limit(5)
+        .all()
+    )
+    job_rows = [_JobRow(j, tax_rate) for j in recent_jobs]
+
+    completed_query = _jobs_query(start_dt, end_dt).filter(Job.status == "completed")
+    total_revenue = completed_query.with_entities(func.sum(Job.cost)).scalar() or 0.0
+
+    completed_jobs = (
+        completed_query
+        .options(joinedload(Job.parts), joinedload(Job.labor))
+        .all()
+    )
+    completed_parts_revenue = round(sum(j.parts_total for j in completed_jobs), 2)
+    completed_labor_revenue = round(sum(j.labor_total for j in completed_jobs), 2)
 
     open_pipeline = (
         _jobs_query(start_dt, end_dt)
@@ -80,8 +111,10 @@ def index() -> ResponseReturnValue:
 
     return render_template(
         "accounting/index.html",
-        jobs=jobs,
+        job_rows=job_rows,
         total_revenue=total_revenue,
+        completed_parts_revenue=completed_parts_revenue,
+        completed_labor_revenue=completed_labor_revenue,
         open_pipeline=open_pipeline,
         avg_ticket=avg_ticket,
         start_date=start_raw,
