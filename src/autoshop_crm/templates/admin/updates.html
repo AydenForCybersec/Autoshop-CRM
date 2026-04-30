@@ -1,3 +1,168 @@
 {% extends "admin/layout.html" %}
 {% block admin_title %}Updates{% endblock %}
-{% block admin_content %}<section class="panel"><p>Updates UI — coming soon.</p></section>{% endblock %}
+{% block admin_subtitle %}<p class="subcopy">Manage application version, apply updates, and roll back if needed.</p>{% endblock %}
+
+{% block admin_content %}
+{% if not status.enabled %}
+<section class="panel">
+    <p class="entity-meta">{{ status.error or "Update manager is disabled by configuration." }}</p>
+</section>
+{% else %}
+<section class="layout-two-col">
+    <article class="panel" id="status-panel">
+        <div class="panel-head">
+            <h2>Version</h2>
+            <span class="chip" id="update-badge">{{ "Update Available" if status.has_update else "Up to Date" }}</span>
+        </div>
+        <div class="form-grid">
+            <p class="entity-meta"><strong>Current:</strong> <code id="current-commit">{{ status.current_short_commit or "N/A" }}</code></p>
+            <p class="entity-meta"><strong>Latest:</strong> <code id="latest-commit">{{ status.latest_short_commit or "N/A" }}</code></p>
+            <p class="entity-meta"><strong>Behind by:</strong> <span id="behind-by">{{ status.behind_by }}</span> commit(s)</p>
+        </div>
+        <div style="margin-top:1rem">
+            <button class="btn btn-secondary" id="check-btn" onclick="checkForUpdates()">Check for Updates</button>
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel-head"><h2>Apply Update</h2></div>
+        <p class="entity-meta">Type <code>{{ config.UPDATE_CONFIRM_PHRASE }}</code> to confirm.</p>
+        <div class="form-grid">
+            <label class="field">
+                <span>Confirmation Phrase</span>
+                <input type="text" id="apply-confirm" autocomplete="off" placeholder="{{ config.UPDATE_CONFIRM_PHRASE }}">
+            </label>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                <button class="btn btn-primary" id="apply-btn"
+                    onclick="applyUpdate()"
+                    {{ 'disabled' if not status.has_update }}>Apply Update</button>
+                <button class="btn btn-secondary" onclick="rollback(1)">Rollback 1</button>
+                <button class="btn btn-secondary" onclick="rollback(2)">Rollback 2</button>
+            </div>
+        </div>
+    </article>
+</section>
+
+<section class="panel" id="progress-panel" style="display:none">
+    <div class="panel-head">
+        <h2 id="progress-title">Applying Update…</h2>
+        <span class="chip" id="progress-badge">In Progress</span>
+    </div>
+    <div id="progress-steps" style="font-family:monospace;font-size:.85rem;line-height:1.6;padding:.5rem 0"></div>
+    <div id="reconnect-msg" style="display:none;margin-top:1rem">
+        <p class="entity-meta" style="color:var(--warning)">Service restarting — reconnecting…</p>
+    </div>
+</section>
+
+{% if status.rollback_points %}
+<section class="panel">
+    <div class="panel-head"><h2>Rollback History</h2></div>
+    <ul class="entity-list">
+        {% for item in status.rollback_points %}
+        <li class="entity-item">
+            <p class="entity-meta"><code>{{ item.short_commit }}</code>{% if item.timestamp_utc %} — {{ item.timestamp_utc }}{% endif %}</p>
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+<script>
+const CSRF = "{{ csrf_token() }}";
+
+function addStep(msg, status) {
+    const el = document.getElementById("progress-steps");
+    const icon = status === "ok" ? "✓" : status === "error" ? "✗" : "…";
+    const color = status === "ok" ? "var(--success)" : status === "error" ? "var(--danger)" : "var(--muted)";
+    el.innerHTML += `<div style="color:${color}">${icon} ${msg}</div>`;
+    el.scrollTop = el.scrollHeight;
+}
+
+function showProgress(title) {
+    document.getElementById("progress-panel").style.display = "";
+    document.getElementById("progress-title").textContent = title;
+    document.getElementById("progress-steps").innerHTML = "";
+    document.getElementById("progress-badge").textContent = "In Progress";
+    document.getElementById("reconnect-msg").style.display = "none";
+}
+
+function finishProgress(ok, msg) {
+    document.getElementById("progress-badge").textContent = ok ? "Done" : "Failed";
+    document.getElementById("progress-badge").style.background = ok ? "var(--success)" : "var(--danger)";
+    addStep(msg, ok ? "ok" : "error");
+}
+
+async function checkForUpdates() {
+    const btn = document.getElementById("check-btn");
+    btn.disabled = true;
+    btn.textContent = "Checking…";
+    const resp = await fetch("{{ url_for('admin.updates_check') }}", {
+        method: "POST",
+        headers: {"X-CSRFToken": CSRF}
+    });
+    const data = await resp.json();
+    btn.disabled = false;
+    btn.textContent = "Check for Updates";
+    if (data.ok) {
+        document.getElementById("current-commit").textContent = data.current || "N/A";
+        document.getElementById("latest-commit").textContent = data.latest || "N/A";
+        document.getElementById("behind-by").textContent = data.behind_by;
+        document.getElementById("update-badge").textContent = data.has_update ? "Update Available" : "Up to Date";
+        document.getElementById("apply-btn").disabled = !data.has_update;
+    } else {
+        alert("Check failed: " + data.error);
+    }
+}
+
+async function applyUpdate() {
+    const confirm_text = document.getElementById("apply-confirm").value;
+    showProgress("Applying Update");
+    addStep("Pulling latest code from remote…", "pending");
+    const fd = new FormData();
+    fd.append("confirm_text", confirm_text);
+    fd.append("csrf_token", CSRF);
+    const resp = await fetch("{{ url_for('admin.updates_apply') }}", {method:"POST", body: fd});
+    const data = await resp.json();
+    if (!data.ok) {
+        finishProgress(false, data.error);
+        return;
+    }
+    addStep(`Code updated: ${data.from_commit} → ${data.to_commit}`, "ok");
+    addStep("Running database migrations…", "ok");
+    addStep("Restarting service…", "pending");
+    document.getElementById("reconnect-msg").style.display = "";
+    await waitForReconnect();
+}
+
+async function rollback(steps) {
+    const confirm_text = document.getElementById("apply-confirm").value;
+    showProgress(`Rolling Back ${steps} Update(s)`);
+    addStep("Reverting commits…", "pending");
+    const fd = new FormData();
+    fd.append("confirm_text", confirm_text);
+    fd.append("steps", steps);
+    fd.append("csrf_token", CSRF);
+    const resp = await fetch("{{ url_for('admin.updates_rollback') }}", {method:"POST", body: fd});
+    const data = await resp.json();
+    if (!data.ok) { finishProgress(false, data.error); return; }
+    addStep(`Rolled back: ${data.from_commit} → ${data.to_commit}`, "ok");
+    document.getElementById("reconnect-msg").style.display = "";
+    await waitForReconnect();
+}
+
+async function waitForReconnect() {
+    await new Promise(r => setTimeout(r, 3000));
+    let tries = 0;
+    while (tries < 30) {
+        try {
+            const r = await fetch(window.location.href, {method:"HEAD"});
+            if (r.ok) { window.location.reload(); return; }
+        } catch(_) {}
+        await new Promise(r => setTimeout(r, 1500));
+        tries++;
+    }
+    finishProgress(false, "Could not reconnect — check service status manually.");
+}
+</script>
+{% endif %}
+{% endblock %}
