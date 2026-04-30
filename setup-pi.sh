@@ -5,6 +5,9 @@ REPO_URL="https://github.com/AydenForCybersec/Autoshop-CRM.git"
 INSTALL_DIR="$HOME/autoshop-crm"
 SERVICE_NAME="autoshop-crm"
 
+read -rp "Port to run on [5000]: " PORT
+PORT="${PORT:-5000}"
+
 echo "==> Installing system packages"
 sudo apt update -qq
 sudo apt install -y python3 python3-venv git
@@ -61,7 +64,7 @@ After=network.target
 User=${USER}
 WorkingDirectory=${INSTALL_DIR}
 EnvironmentFile=${INSTALL_DIR}/.env
-ExecStart=${INSTALL_DIR}/venv/bin/gunicorn -w 2 -b 0.0.0.0:5000 wsgi:app
+ExecStart=${INSTALL_DIR}/venv/bin/gunicorn -w 2 -b 0.0.0.0:${PORT} wsgi:app
 Restart=always
 
 [Install]
@@ -81,5 +84,5 @@ PI_IP=$(hostname -I | awk '{print $1}')
 echo ""
 echo "Setup complete."
 echo ""
-echo "Open http://${PI_IP}:5000 on any device on this network to create your admin account."
+echo "Open http://${PI_IP}:${PORT} on any device on this network to create your admin account."
 echo ""
