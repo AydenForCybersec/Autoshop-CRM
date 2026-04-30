@@ -26,10 +26,6 @@ if [ -d "$INSTALL_DIR" ] || systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/n
         pip install --quiet -r "$INSTALL_DIR/requirements.txt"
         FLASK_APP=autoshop_crm:create_app PYTHONPATH=src DATABASE_URL="sqlite:///${INSTALL_DIR}/autoshop.db" \
             "$INSTALL_DIR/venv/bin/flask" db upgrade "$TARGET_REVISION"
-        CURRENT_PORT=$(grep -oP '(?<=-b 0\.0\.0\.0:)\d+' /etc/systemd/system/${SERVICE_NAME}.service || echo "5000")
-        if [ "$CURRENT_PORT" -lt 1024 ]; then
-            sudo setcap 'cap_net_bind_service=+ep' "$INSTALL_DIR/venv/bin/gunicorn"
-        fi
         sudo systemctl restart "$SERVICE_NAME"
         echo "    Update complete."
         exit 0
@@ -80,6 +76,13 @@ FLASK_APP=autoshop_crm:create_app PYTHONPATH=src DATABASE_URL="sqlite:///${INSTA
     "$INSTALL_DIR/venv/bin/flask" db upgrade "$TARGET_REVISION"
 
 echo "==> Installing systemd service"
+if [ "$PORT" -lt 1024 ]; then
+    CAPABILITY_LINES="AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE"
+else
+    CAPABILITY_LINES=""
+fi
+
 sudo tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
 [Unit]
 Description=Autoshop CRM
@@ -91,6 +94,7 @@ WorkingDirectory=${INSTALL_DIR}
 EnvironmentFile=${INSTALL_DIR}/.env
 ExecStart=${INSTALL_DIR}/venv/bin/gunicorn -w 2 -b 0.0.0.0:${PORT} wsgi:app
 Restart=always
+${CAPABILITY_LINES}
 
 [Install]
 WantedBy=multi-user.target
@@ -98,12 +102,6 @@ EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable "$SERVICE_NAME"
-
-if [ "$PORT" -lt 1024 ]; then
-    echo "==> Granting gunicorn permission to bind to port ${PORT}"
-    sudo setcap 'cap_net_bind_service=+ep' "$INSTALL_DIR/venv/bin/gunicorn"
-fi
-
 sudo systemctl start "$SERVICE_NAME"
 
 echo "==> Allowing passwordless service restart for updates"
