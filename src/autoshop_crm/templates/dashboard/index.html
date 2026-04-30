@@ -91,4 +91,16 @@
         {% endfor %}
     </ul>
 </section>
+
+{% if plugin_dashboard_widgets %}
+<section>
+    {% for widget in plugin_dashboard_widgets %}
+        {% if can(widget.permission) %}
+            {% with vars = widget.vars %}
+                {% include widget.template %}
+            {% endwith %}
+        {% endif %}
+    {% endfor %}
+</section>
+{% endif %}
 {% endblock %}
