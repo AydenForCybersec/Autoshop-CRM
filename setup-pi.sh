@@ -4,7 +4,7 @@ set -e
 REPO_URL="https://github.com/AydenForCybersec/Autoshop-CRM.git"
 INSTALL_DIR="$HOME/autoshop-crm"
 SERVICE_NAME="autoshop-crm"
-TARGET_REVISION="b2d4f8a1c6e3"
+TARGET_REVISION="c1d2e3f4a5b6"
 
 # Detect existing install and offer to reinstall
 if [ -d "$INSTALL_DIR" ] || systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
