@@ -28,6 +28,13 @@ def danger() -> ResponseReturnValue:
                 return redirect(url_for("admin.danger"))
             db.drop_all()
             db.create_all()
+            from alembic.config import Config
+            from alembic import command as alembic_command
+            from flask import current_app
+            import os
+            alembic_cfg = Config(os.path.join(current_app.root_path, "..", "..", "migrations", "alembic.ini"))
+            alembic_cfg.set_main_option("script_location", os.path.join(current_app.root_path, "..", "..", "migrations"))
+            alembic_command.stamp(alembic_cfg, "head")
             flash("All data cleared. Database reset to empty.")
             return redirect(url_for("auth.login_view"))
 

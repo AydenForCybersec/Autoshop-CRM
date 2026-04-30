@@ -1,4 +1,4 @@
-"""Tests for update management routes."""
+"""Tests for admin update management routes."""
 
 import pytest
 
@@ -17,6 +17,9 @@ def updates_app():
         SQLALCHEMY_DATABASE_URI="sqlite:///:memory:",
         WTF_CSRF_ENABLED=False,
         LOGIN_DISABLED=True,
+        UPDATE_ENABLED=True,
+        UPDATE_LOCAL_ONLY=False,
+        UPDATE_CONFIRM_PHRASE="CONFIRM",
     )
 
     with app.app_context():
@@ -28,12 +31,11 @@ def updates_app():
 
 @pytest.fixture
 def updates_client(updates_app):
-    """Return test client for update route suite."""
     return updates_app.test_client()
 
 
 class FakeUpdateManager:
-    """Simple controllable double for update route tests."""
+    """Controllable double for update route tests."""
 
     def __init__(self):
         self.rollback_steps = None
@@ -41,26 +43,13 @@ class FakeUpdateManager:
     def status(self, *, fetch=False):
         return {
             "enabled": True,
-            "repo_path": "/tmp/repo",
-            "remote": "origin",
-            "branch": "main",
-            "remote_ref": "origin/main",
-            "is_git_repo": True,
-            "current_commit": "1111111111111111",
-            "current_short_commit": "11111111",
-            "latest_commit": "2222222222222222",
-            "latest_short_commit": "22222222",
-            "dirty": False,
-            "ahead_by": 0,
-            "behind_by": 1 if fetch else 0,
             "has_update": bool(fetch),
-            "repo_state": "behind" if fetch else "in_sync",
-            "can_apply_update": bool(fetch),
-            "apply_block_reason": None if fetch else "No updates available.",
+            "current_short_commit": "11111111",
+            "latest_short_commit": "22222222",
+            "behind_by": 1 if fetch else 0,
             "rollback_points": [
-                {"commit": "1111111111111111", "short_commit": "11111111", "timestamp_utc": "2026-02-15T00:00:00+00:00"}
+                {"short_commit": "11111111", "timestamp_utc": "2026-02-15T00:00:00+00:00"}
             ],
-            "error": None,
         }
 
     def apply_update(self):
@@ -68,60 +57,71 @@ class FakeUpdateManager:
 
     def rollback(self, *, steps=1):
         self.rollback_steps = steps
-        return {
-            "rolled_back": True,
-            "from_commit": "2222222222222222",
-            "to_commit": "1111111111111111",
-            "steps": steps,
-        }
+        return {"from_commit": "2222222222222222", "to_commit": "1111111111111111"}
 
 
-def test_updates_page_renders_status(updates_client, monkeypatch):
-    """Updates page should render status content from manager."""
+def test_updates_page_renders(updates_client, monkeypatch):
+    """Admin updates page should render status content."""
     manager = FakeUpdateManager()
-    monkeypatch.setattr("autoshop_crm.routes.updates.get_update_manager", lambda: manager)
+    monkeypatch.setattr("autoshop_crm.routes.admin.updates_ui._get_update_manager", lambda: manager)
 
-    response = updates_client.get("/updates")
+    response = updates_client.get("/admin/updates")
 
     assert response.status_code == 200
-    assert b"Application Updates" in response.data
+    assert b"Updates" in response.data
     assert b"11111111" in response.data
 
 
-def test_updates_apply_action_redirects_with_success_flash(updates_client, monkeypatch):
-    """Apply action should execute manager update and flash success."""
+def test_updates_check_returns_json(updates_client, monkeypatch):
+    """Check endpoint should return JSON status."""
     manager = FakeUpdateManager()
-    monkeypatch.setattr("autoshop_crm.routes.updates.get_update_manager", lambda: manager)
+    monkeypatch.setattr("autoshop_crm.routes.admin.updates_ui._get_update_manager", lambda: manager)
 
-    response = updates_client.post(
-        "/updates",
-        data={"action": "apply", "confirm_text": "CONFIRM"},
-        follow_redirects=True,
-    )
+    response = updates_client.post("/admin/updates/check")
 
     assert response.status_code == 200
-    assert b"Update applied successfully" in response.data
+    data = response.get_json()
+    assert data["ok"] is True
+    assert "has_update" in data
 
 
-def test_updates_rollback_two_calls_manager(updates_client, monkeypatch):
-    """Rollback by two should pass steps=2 into manager."""
+def test_updates_apply_requires_confirm(updates_client, monkeypatch):
+    """Apply should be blocked without correct confirmation phrase."""
     manager = FakeUpdateManager()
-    monkeypatch.setattr("autoshop_crm.routes.updates.get_update_manager", lambda: manager)
+    monkeypatch.setattr("autoshop_crm.routes.admin.updates_ui._get_update_manager", lambda: manager)
 
-    response = updates_client.post(
-        "/updates",
-        data={"action": "rollback_2", "confirm_text": "CONFIRM"},
-        follow_redirects=False,
-    )
+    response = updates_client.post("/admin/updates/apply", data={"confirm_text": "WRONG"})
 
-    assert response.status_code == 302
-    assert response.headers["Location"].endswith("/updates")
+    data = response.get_json()
+    assert data["ok"] is False
+    assert "confirmation" in data["error"].lower()
+
+
+def test_updates_apply_succeeds_with_correct_phrase(updates_client, monkeypatch):
+    """Apply should call manager and return success JSON."""
+    manager = FakeUpdateManager()
+    monkeypatch.setattr("autoshop_crm.routes.admin.updates_ui._get_update_manager", lambda: manager)
+
+    response = updates_client.post("/admin/updates/apply", data={"confirm_text": "CONFIRM"})
+
+    data = response.get_json()
+    assert data["ok"] is True
+
+
+def test_updates_rollback_passes_steps(updates_client, monkeypatch):
+    """Rollback endpoint should pass steps to manager."""
+    manager = FakeUpdateManager()
+    monkeypatch.setattr("autoshop_crm.routes.admin.updates_ui._get_update_manager", lambda: manager)
+
+    response = updates_client.post("/admin/updates/rollback", data={"confirm_text": "CONFIRM", "steps": "2"})
+
+    data = response.get_json()
+    assert data["ok"] is True
     assert manager.rollback_steps == 2
 
 
 @pytest.fixture
 def updates_rbac_app():
-    """Create app with auth enabled for permission checks."""
     app = create_app()
     app.config.update(
         TESTING=True,
@@ -145,7 +145,6 @@ def updates_rbac_app():
 
 @pytest.fixture
 def updates_rbac_client(updates_rbac_app):
-    """Return client for update RBAC checks."""
     return updates_rbac_app.test_client()
 
 
@@ -154,22 +153,11 @@ def _login(client, username: str, password: str = "supersecure") -> None:
     assert response.status_code == 302
 
 
-def test_mechanic_cannot_access_updates(updates_rbac_client):
-    """Mechanic users should be blocked from update manager route."""
+def test_mechanic_cannot_access_admin_updates(updates_rbac_client):
+    """Mechanic users should be blocked from admin updates route."""
     _login(updates_rbac_client, "mech")
 
-    response = updates_rbac_client.get("/updates", follow_redirects=False)
+    response = updates_rbac_client.get("/admin/updates", follow_redirects=False)
 
     assert response.status_code == 302
     assert response.headers["Location"].endswith("/")
-
-
-def test_updates_apply_requires_confirmation_phrase(updates_client, monkeypatch):
-    """Apply should be blocked without confirmation phrase."""
-    manager = FakeUpdateManager()
-    monkeypatch.setattr("autoshop_crm.routes.updates.get_update_manager", lambda: manager)
-
-    response = updates_client.post("/updates", data={"action": "apply"}, follow_redirects=True)
-
-    assert response.status_code == 200
-    assert b"Type the confirmation phrase before applying updates." in response.data
