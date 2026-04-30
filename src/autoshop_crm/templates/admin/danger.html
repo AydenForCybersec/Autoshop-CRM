@@ -1,3 +1,40 @@
 {% extends "admin/layout.html" %}
 {% block admin_title %}Danger Zone{% endblock %}
-{% block admin_content %}<section class="panel"><p>Danger Zone — coming soon.</p></section>{% endblock %}
+{% block admin_subtitle %}<p class="subcopy" style="color:var(--danger)">These actions are irreversible. Read carefully before proceeding.</p>{% endblock %}
+
+{% block admin_content %}
+<section class="panel" style="border:2px solid var(--danger)">
+    <div class="panel-head">
+        <h2 style="color:var(--danger)">Destructive Actions</h2>
+        <span class="chip" style="background:var(--danger);color:#fff">Irreversible</span>
+    </div>
+
+    <article class="panel" style="margin-top:1rem">
+        <div class="panel-head"><h3>Clear All Data</h3></div>
+        <p class="entity-meta" style="color:var(--danger)">Drops and recreates all database tables. <strong>All customers, vehicles, jobs, and settings will be permanently deleted.</strong></p>
+        <form method="post" onsubmit="return confirm('This will DELETE ALL DATA permanently. Are you absolutely sure?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="clear_all_data">
+            <label class="field">
+                <span>Type <code>{{ confirm_phrase }}</code> to confirm</span>
+                <input type="text" name="confirm_text" autocomplete="off" placeholder="{{ confirm_phrase }}">
+            </label>
+            <button type="submit" class="btn btn-danger" style="margin-top:.5rem">Clear All Data</button>
+        </form>
+    </article>
+
+    <article class="panel" style="margin-top:1rem">
+        <div class="panel-head"><h3>Reset Settings to Defaults</h3></div>
+        <p class="entity-meta">Wipes shop branding, theme colors, and business info. Users and job data are preserved.</p>
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="reset_defaults">
+            <label class="field">
+                <span>Type <code>{{ reset_phrase }}</code> to confirm</span>
+                <input type="text" name="confirm_text" autocomplete="off" placeholder="{{ reset_phrase }}">
+            </label>
+            <button type="submit" class="btn btn-danger" style="margin-top:.5rem">Reset to Defaults</button>
+        </form>
+    </article>
+</section>
+{% endblock %}
