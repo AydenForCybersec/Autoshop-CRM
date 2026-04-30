@@ -37,7 +37,7 @@ PORT="${PORT:-5000}"
 
 echo "==> Installing system packages"
 sudo apt update -qq
-sudo apt install -y python3 python3-venv git
+sudo apt install -y python3 python3-venv git authbind
 
 echo "==> Cloning repository"
 git clone "$REPO_URL" "$INSTALL_DIR"
@@ -77,10 +77,12 @@ FLASK_APP=autoshop_crm:create_app PYTHONPATH=src DATABASE_URL="sqlite:///${INSTA
 
 echo "==> Installing systemd service"
 if [ "$PORT" -lt 1024 ]; then
-    CAPABILITY_LINES="AmbientCapabilities=CAP_NET_BIND_SERVICE
-CapabilityBoundingSet=CAP_NET_BIND_SERVICE"
+    sudo touch "/etc/authbind/byport/${PORT}"
+    sudo chmod 500 "/etc/authbind/byport/${PORT}"
+    sudo chown "${USER}" "/etc/authbind/byport/${PORT}"
+    GUNICORN_EXEC="/usr/bin/authbind --deep ${INSTALL_DIR}/venv/bin/gunicorn"
 else
-    CAPABILITY_LINES=""
+    GUNICORN_EXEC="${INSTALL_DIR}/venv/bin/gunicorn"
 fi
 
 sudo tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
@@ -92,9 +94,8 @@ After=network.target
 User=${USER}
 WorkingDirectory=${INSTALL_DIR}
 EnvironmentFile=${INSTALL_DIR}/.env
-ExecStart=${INSTALL_DIR}/venv/bin/gunicorn -w 2 -b 0.0.0.0:${PORT} wsgi:app
+ExecStart=${GUNICORN_EXEC} -w 2 -b 0.0.0.0:${PORT} wsgi:app
 Restart=always
-${CAPABILITY_LINES}
 
 [Install]
 WantedBy=multi-user.target
