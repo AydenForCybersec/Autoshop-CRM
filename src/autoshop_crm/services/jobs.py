@@ -102,6 +102,9 @@ def create_job_part(
         notes=normalized_notes,
     )
     db.session.add(part)
+    db.session.flush()
+    db.session.expire(job)
+    job.cost = round(job.parts_total + job.labor_total, 2)
     db.session.commit()
     return part
 
@@ -142,6 +145,9 @@ def create_job_labor(
         created_at=utc_now_naive(),
     )
     db.session.add(entry)
+    db.session.flush()
+    db.session.expire(job)
+    job.cost = round(job.parts_total + job.labor_total, 2)
     db.session.commit()
     return entry
 

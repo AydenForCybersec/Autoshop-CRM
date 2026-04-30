@@ -9,6 +9,7 @@
 
 <nav class="tab-nav" aria-label="Admin sections">
     <a href="{{ url_for('admin.index') }}" class="{{ 'active' if request.endpoint == 'admin.index' }}">Overview</a>
+    <a href="{{ url_for('admin.users') }}" class="{{ 'active' if request.endpoint.startswith('admin.user') }}">Users</a>
     <a href="{{ url_for('admin.updates') }}" class="{{ 'active' if request.endpoint == 'admin.updates' }}">Updates</a>
     <a href="{{ url_for('admin.plugins') }}" class="{{ 'active' if request.endpoint == 'admin.plugins' }}">Plugins</a>
     <a href="{{ url_for('admin.danger') }}" class="{{ 'active' if request.endpoint == 'admin.danger' }}">Danger Zone</a>
