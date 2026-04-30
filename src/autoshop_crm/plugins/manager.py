@@ -139,7 +139,9 @@ class PluginManager:
         plugin_path: Path = self._manifests[instance.plugin_id]["_path"]
         template_dir = plugin_path / "templates"
         if template_dir.is_dir():
-            app.jinja_loader.searchpath.append(str(template_dir))  # type: ignore[union-attr]
+            loader = app.jinja_loader
+            if loader is not None and hasattr(loader, "searchpath"):
+                loader.searchpath.append(str(template_dir))
 
     def _collect_nav_items(self) -> list[dict]:
         items = []
@@ -202,6 +204,10 @@ class PluginManager:
                 self._register_plugin(self._app, instance)
             self._instances[plugin_id] = instance
             self._refresh_jinja_globals()
+        else:
+            state.failed = True
+            state.fail_reason = "Failed to load module after install"
+            db.session.commit()
 
         return plugin_id
 
@@ -247,9 +253,12 @@ class PluginManager:
         from ..extensions import db
 
         state = PluginState.query.filter_by(plugin_id=plugin_id).first()
-        if state:
+        if state is None:
+            state = PluginState(plugin_id=plugin_id, enabled=True, settings={})
+            db.session.add(state)
+        else:
             state.enabled = True
-            db.session.commit()
+        db.session.commit()
         manifest = self._manifests.get(plugin_id)
         if manifest and plugin_id not in self._instances:
             instance = self._load_plugin(manifest)
