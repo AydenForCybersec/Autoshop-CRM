@@ -1,4 +1,4 @@
-# Plugin System Design
+# Plugin System + Admin Panel Design
 
 **Date:** 2026-04-29
 **Status:** Approved
@@ -244,13 +244,53 @@ plugins/                 # all installed plugins live here (gitignored except bu
 
 ---
 
+## Admin Panel
+
+A new `/admin` section, gated by the `admin` role (not just a permission — role check directly). Consolidates all dangerous/privileged operations away from the general settings page.
+
+### Navigation
+- Admin-only sidebar section (or top-level nav item labeled "Admin") visible only to users with `role == "admin"`
+- Existing `/settings` retains branding, theme, and shop info (accessible to owners too)
+- `/updates` and user management move under `/admin`
+
+### Admin Panel Sections
+
+**Overview** (`/admin`) — summary cards: active users, installed plugins, last update check, last backup, any failed plugin loads.
+
+**Users & Permissions** (`/admin/users`) — moved from wherever it currently lives. Create/edit/deactivate users, assign roles, set per-user permission overrides.
+
+**Plugins** (`/admin/plugins`) — full plugin management UI (marketplace, install from URL, enable/disable, uninstall, per-plugin settings).
+
+**Updates** (`/admin/updates`) — redesigned update UI:
+- Clear current version badge and "Check for updates" button
+- If update available: changelog rendered as markdown, version diff highlighted
+- Progress shown as a live step-by-step log (polling), not a raw terminal dump
+- Steps labeled: "Pulling code", "Running migrations", "Restarting service" with pass/fail indicators
+- After restart, auto-reconnect polling — page shows "Reconnecting..." then reloads when app is back up
+
+**Danger Zone** (`/admin/danger`) — destructive operations grouped in a clearly styled red-bordered section:
+- **Clear all data** — drops and recreates all tables (requires typing `DELETE EVERYTHING` to confirm)
+- **Reset to defaults** — wipes settings/branding back to factory defaults
+- **Uninstall all plugins** — removes all plugins at once
+- **Export database** — download raw SQLite file (also available in db_backup plugin but surfaced here too)
+- Each action requires an explicit typed confirmation phrase, shown inline with a red warning banner explaining consequences
+
+### Existing `/settings` After Move
+Retains: shop name, logo, branding colors, invoice rates, labor rates. Accessible to owners and admins. All dangerous ops removed.
+
+### New Permission
+`access_admin_panel` — added to `PERMISSIONS`, granted only to `admin` role. Used as the gate for all `/admin/*` routes in addition to the role check (defense in depth).
+
+---
+
 ## Integration Points in Existing Code
 
 | File | Change |
 |------|--------|
-| `app.py` | Add `plugin_manager.init_app(app)` after blueprint registration |
-| `services/authorization.py` | Add `manage_plugins` to `PERMISSIONS` and role sets |
-| `templates/layouts/base.html` | Loop `plugin_nav_items` in sidebar |
+| `app.py` | Add `plugin_manager.init_app(app)`, register `admin_bp` |
+| `services/authorization.py` | Add `manage_plugins`, `access_admin_panel` to `PERMISSIONS` and role sets |
+| `templates/layouts/base.html` | Loop `plugin_nav_items` in sidebar; add admin nav section |
 | `templates/dashboard/index.html` | Loop `plugin_dashboard_widgets` |
-| `templates/settings/index.html` | Loop `plugin_settings_panels` |
+| `templates/settings/index.html` | Remove dangerous ops; loop `plugin_settings_panels` |
+| `routes/updates.py` | Move to `routes/admin/updates.py`, redesign UI |
 | `requirements.txt` | Add `psutil` (system monitor), `gitpython` (install from URL) |
