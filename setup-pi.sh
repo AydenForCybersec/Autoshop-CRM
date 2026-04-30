@@ -4,6 +4,33 @@ set -e
 REPO_URL="https://github.com/AydenForCybersec/Autoshop-CRM.git"
 INSTALL_DIR="$HOME/autoshop-crm"
 SERVICE_NAME="autoshop-crm"
+TARGET_REVISION="b2d4f8a1c6e3"
+
+# Detect existing install and offer to reinstall
+if [ -d "$INSTALL_DIR" ] || systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+    echo "An existing Autoshop CRM install was detected."
+    read -rp "Reinstall from scratch? This will erase all data. [y/N]: " REINSTALL </dev/tty
+    if [[ "$REINSTALL" =~ ^[Yy]$ ]]; then
+        echo "==> Removing existing install"
+        sudo systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+        sudo systemctl disable "$SERVICE_NAME" 2>/dev/null || true
+        sudo rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+        sudo rm -f "/etc/sudoers.d/autoshop-restart"
+        sudo systemctl daemon-reload
+        rm -rf "$INSTALL_DIR"
+        echo "    Done. Starting fresh install."
+    else
+        echo "==> Updating existing install"
+        git -C "$INSTALL_DIR" pull
+        source "$INSTALL_DIR/venv/bin/activate"
+        pip install --quiet -r "$INSTALL_DIR/requirements.txt"
+        FLASK_APP=autoshop_crm:create_app PYTHONPATH=src DATABASE_URL="sqlite:///${INSTALL_DIR}/autoshop.db" \
+            "$INSTALL_DIR/venv/bin/flask" db upgrade "$TARGET_REVISION"
+        sudo systemctl restart "$SERVICE_NAME"
+        echo "    Update complete."
+        exit 0
+    fi
+fi
 
 read -rp "Port to run on [5000]: " PORT </dev/tty
 PORT="${PORT:-5000}"
@@ -13,13 +40,7 @@ sudo apt update -qq
 sudo apt install -y python3 python3-venv git
 
 echo "==> Cloning repository"
-if [ -d "$INSTALL_DIR" ]; then
-    echo "    Directory $INSTALL_DIR already exists — pulling latest instead"
-    git -C "$INSTALL_DIR" pull
-else
-    git clone "$REPO_URL" "$INSTALL_DIR"
-fi
-
+git clone "$REPO_URL" "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
 echo "==> Creating Python environment"
@@ -51,9 +72,8 @@ UPDATE_POST_UPDATE_COMMANDS="flask db upgrade,sudo systemctl restart autoshop-cr
 EOF
 
 echo "==> Running database migrations"
-rm -f "${INSTALL_DIR}/autoshop.db"
 FLASK_APP=autoshop_crm:create_app PYTHONPATH=src DATABASE_URL="sqlite:///${INSTALL_DIR}/autoshop.db" \
-    "$INSTALL_DIR/venv/bin/flask" db upgrade
+    "$INSTALL_DIR/venv/bin/flask" db upgrade "$TARGET_REVISION"
 
 echo "==> Installing systemd service"
 sudo tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
