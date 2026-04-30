@@ -1,0 +1,98 @@
+{% extends "admin/layout.html" %}
+{% block admin_title %}Plugins{% endblock %}
+{% block admin_subtitle %}<p class="subcopy">Install, enable, disable, and manage plugins.</p>{% endblock %}
+
+{% block admin_content %}
+<nav class="tab-nav" id="plugin-tabs" style="margin-bottom:1rem">
+    <a href="#installed" onclick="return showTab('installed')" id="tab-installed" class="active">Installed ({{ installed|length }})</a>
+    <a href="#marketplace" onclick="return showTab('marketplace')" id="tab-marketplace">Marketplace ({{ marketplace|length }})</a>
+    <a href="#install-url" onclick="return showTab('install-url')" id="tab-url">Install from URL</a>
+</nav>
+
+<div id="pane-installed">
+{% if installed %}
+    <ul class="entity-list">
+    {% for plugin in installed %}
+        <li class="entity-item" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+            <div>
+                <strong>{{ plugin.name }}</strong>
+                <span class="chip">v{{ plugin.version }}</span>
+                {% if plugin.failed %}<span class="chip" style="background:var(--danger);color:#fff">Failed</span>{% endif %}
+                {% if not plugin.enabled %}<span class="chip" style="background:var(--muted)">Disabled</span>{% endif %}
+                <p class="entity-meta">{{ plugin.description }}</p>
+                {% if plugin.fail_reason %}<p class="entity-meta" style="color:var(--danger)">{{ plugin.fail_reason }}</p>{% endif %}
+            </div>
+            <div style="display:flex;gap:.5rem;flex-shrink:0">
+                <form method="post" action="{{ url_for('admin.plugin_toggle', plugin_id=plugin.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-secondary">{{ "Disable" if plugin.enabled else "Enable" }}</button>
+                </form>
+                <form method="post" action="{{ url_for('admin.plugin_uninstall', plugin_id=plugin.id) }}"
+                      onsubmit="return confirm('Uninstall {{ plugin.name }}?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-danger">Uninstall</button>
+                </form>
+            </div>
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p class="empty-state">No plugins installed. Browse the Marketplace to get started.</p>
+{% endif %}
+</div>
+
+<div id="pane-marketplace" style="display:none">
+{% if marketplace %}
+    <ul class="entity-list">
+    {% for plugin in marketplace %}
+        <li class="entity-item" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+            <div>
+                <strong>{{ plugin.name }}</strong>
+                <span class="chip">v{{ plugin.version }}</span>
+                <p class="entity-meta">{{ plugin.description }}</p>
+                <p class="entity-meta" style="color:var(--muted)">by {{ plugin.author }}</p>
+            </div>
+            <form method="post" action="{{ url_for('admin.plugin_install_marketplace', plugin_id=plugin.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-primary">Install</button>
+            </form>
+        </li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p class="empty-state">No additional plugins available, or marketplace could not be reached.</p>
+{% endif %}
+</div>
+
+<div id="pane-install-url" style="display:none">
+    <section class="panel">
+        <div class="panel-head"><h2>Install from GitHub URL</h2></div>
+        <form method="post" action="{{ url_for('admin.plugin_install_url') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-grid">
+                <label class="field">
+                    <span>GitHub Repository URL</span>
+                    <input type="url" name="url" placeholder="https://github.com/user/repo" required>
+                </label>
+                <label class="field">
+                    <span>Plugin subfolder path (leave blank if plugin.json is at repo root)</span>
+                    <input type="text" name="plugin_path" placeholder="plugins/my_plugin">
+                </label>
+                <button type="submit" class="btn btn-primary">Install Plugin</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<script>
+function showTab(name) {
+    ["installed","marketplace","install-url"].forEach(t => {
+        document.getElementById("pane-" + t).style.display = t === name ? "" : "none";
+        document.getElementById("tab-" + t).classList.toggle("active", t === name);
+    });
+    return false;
+}
+const hash = location.hash.replace("#","");
+if (["installed","marketplace","install-url"].includes(hash)) showTab(hash);
+</script>
+{% endblock %}

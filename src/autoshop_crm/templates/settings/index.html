@@ -7,14 +7,12 @@
 <section class="hero-panel compact">
     <p class="eyebrow">Configuration</p>
     <h1>Settings Control Center</h1>
-    <p class="subcopy">Manage business identity, theme, users, and granular permission access.</p>
+    <p class="subcopy">Manage business identity and theme.</p>
 </section>
 
 <nav class="settings-tabs" aria-label="Settings sections">
     <a class="settings-tab {% if active_tab == 'business' %}is-active{% endif %}" href="{{ url_for('dashboard.settings', tab='business') }}">Business</a>
     <a class="settings-tab {% if active_tab == 'theme' %}is-active{% endif %}" href="{{ url_for('dashboard.settings', tab='theme') }}">Theme</a>
-    <a class="settings-tab {% if active_tab == 'users' %}is-active{% endif %}" href="{{ url_for('dashboard.settings', tab='users') }}">Users</a>
-    <a class="settings-tab {% if active_tab == 'permissions' %}is-active{% endif %}" href="{{ url_for('dashboard.settings', tab='permissions') }}">Permissions</a>
 </nav>
 
 {% if active_tab == "business" %}
@@ -189,167 +187,6 @@
 {% endif %}
 {% endif %}
 
-{% if active_tab == "users" %}
-{% if can('manage_users') %}
-<section class="layout-two-col">
-    <article class="panel">
-        <div class="panel-head">
-            <h2>Create User</h2>
-            <span class="chip">Access Accounts</span>
-        </div>
-        <form method="post" class="form-grid">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="action" value="create_user">
-            <input type="hidden" name="active_tab" value="users">
-
-            <label class="field">
-                <span>Username</span>
-                <input type="text" name="new_username" required>
-            </label>
-
-            <label class="field">
-                <span>Role</span>
-                <select name="new_role">
-                    {% for role_key, role_label in roles.items() %}
-                        <option value="{{ role_key }}">{{ role_label }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-
-            <label class="field">
-                <span>Temporary Password</span>
-                <input type="password" name="new_password" minlength="8" required>
-            </label>
-
-            <button type="submit" class="btn btn-primary">Create User</button>
-        </form>
-    </article>
-
-    <article class="panel">
-        <h2>Current Users</h2>
-        <div class="form-grid">
-            {% for user in users %}
-                <section class="settings-user-card">
-                    <header>
-                        <strong>{{ user.username }}</strong>
-                        <span class="entity-meta">{{ roles.get(user.role_key, user.role_key|title) }}</span>
-                    </header>
-
-                    <form method="post" class="form-grid">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="action" value="update_user">
-                        <input type="hidden" name="active_tab" value="users">
-                        <input type="hidden" name="user_id" value="{{ user.id }}">
-
-                        <label class="field">
-                            <span>Username</span>
-                            <input type="text" name="username" value="{{ user.username }}" required>
-                        </label>
-
-                        <label class="field">
-                            <span>Role</span>
-                            <select name="role">
-                                {% for role_key, role_label in roles.items() %}
-                                    <option value="{{ role_key }}" {% if user.role_key == role_key %}selected{% endif %}>{{ role_label }}</option>
-                                {% endfor %}
-                            </select>
-                        </label>
-
-                        <label class="field">
-                            <span>Labor Rate ($/hr)</span>
-                            <input type="number" name="labor_rate" min="0" step="0.01" placeholder="0.00" value="{{ '%.2f'|format(user.labor_rate) if user.labor_rate is not none else '' }}">
-                        </label>
-
-                        <label class="check-row">
-                            <input type="checkbox" name="is_active" value="1" {% if user.is_active %}checked{% endif %}>
-                            <span>Account active</span>
-                        </label>
-
-                        <button type="submit" class="btn btn-secondary">Update User</button>
-                    </form>
-
-                    <form method="post" class="form-grid">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="action" value="reset_password">
-                        <input type="hidden" name="active_tab" value="users">
-                        <input type="hidden" name="user_id" value="{{ user.id }}">
-                        <label class="field">
-                            <span>Reset Password</span>
-                            <input type="password" name="password" minlength="8" required>
-                        </label>
-                        <button type="submit" class="btn btn-secondary">Set New Password</button>
-                    </form>
-
-                    <form method="post" onsubmit="return confirm('Permanently delete {{ user.username }}? This cannot be undone.');">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="action" value="delete_user">
-                        <input type="hidden" name="active_tab" value="users">
-                        <input type="hidden" name="user_id" value="{{ user.id }}">
-                        <button type="submit" class="btn btn-danger">Delete Account</button>
-                    </form>
-                </section>
-            {% endfor %}
-        </div>
-    </article>
-</section>
-{% else %}
-<section class="panel">
-    <p class="entity-meta">You do not have permission to manage users.</p>
-</section>
-{% endif %}
-{% endif %}
-
-{% if active_tab == "permissions" %}
-{% if can('manage_permissions') %}
-<section class="panel">
-    <div class="panel-head">
-        <h2>Granular Permissions</h2>
-        <span class="chip">Fine Control</span>
-    </div>
-
-    <p class="entity-meta">Set exact capability access for each user. Admin always keeps full access.</p>
-
-    <div class="settings-permission-grid">
-        {% for user in users %}
-            <article class="settings-user-card">
-                <header>
-                    <strong>{{ user.username }}</strong>
-                    <span class="entity-meta">{{ roles.get(user.role_key, user.role_key|title) }}</span>
-                </header>
-
-                {% if user.role_key == "admin" %}
-                    <p class="entity-meta">Admin has all permissions and cannot be restricted.</p>
-                {% else %}
-                    {% set effective = user.get_effective_permissions() %}
-                    <form method="post" class="form-grid">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="hidden" name="action" value="update_permissions">
-                        <input type="hidden" name="active_tab" value="permissions">
-                        <input type="hidden" name="user_id" value="{{ user.id }}">
-
-                        <div class="permission-list">
-                            {% for permission in permissions %}
-                                <label class="check-row">
-                                    <input type="checkbox" name="permissions" value="{{ permission }}" {% if permission in effective %}checked{% endif %}>
-                                    <span>{{ permission_labels.get(permission, permission) }}</span>
-                                </label>
-                            {% endfor %}
-                        </div>
-
-                        <button type="submit" class="btn btn-secondary">Save Permissions</button>
-                    </form>
-                {% endif %}
-            </article>
-        {% endfor %}
-    </div>
-</section>
-{% else %}
-<section class="panel">
-    <p class="entity-meta">You do not have permission to adjust user permissions.</p>
-</section>
-{% endif %}
-{% endif %}
-
 <script>
 (() => {
     const tokens = document.querySelectorAll(".theme-token");
@@ -388,4 +225,12 @@
     apply();
 })();
 </script>
+{% for panel in plugin_settings_panels %}
+<section class="panel" style="margin-top:1rem">
+    <div class="panel-head"><h2>{{ panel.label }}</h2><span class="chip">Plugin</span></div>
+    {% with vars = panel.vars %}
+        {% include panel.template %}
+    {% endwith %}
+</section>
+{% endfor %}
 {% endblock %}

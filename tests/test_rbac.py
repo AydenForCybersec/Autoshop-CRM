@@ -65,10 +65,11 @@ def test_mechanic_cannot_access_accounting(rbac_client):
     assert response.headers["Location"].endswith("/")
 
 
-def test_admin_can_create_user_and_set_permission_overrides(rbac_client, rbac_app):
-    """Admin should be able to create users and apply granular permission overrides."""
+def test_user_management_actions_removed_from_settings(rbac_client, rbac_app):
+    """User/permission management actions are no longer handled at /settings (moved to /admin)."""
     _login(rbac_client, "admin")
 
+    # create_user is no longer handled — settings page renders with "Unknown settings action"
     create_response = rbac_client.post(
         "/settings?tab=users",
         data={
@@ -80,32 +81,32 @@ def test_admin_can_create_user_and_set_permission_overrides(rbac_client, rbac_ap
         },
         follow_redirects=False,
     )
-    assert create_response.status_code == 302
-    assert create_response.headers["Location"].endswith("/settings?tab=users")
+    assert create_response.status_code == 200
 
     with rbac_app.app_context():
         user = User.query.filter_by(username="bookkeeper").first()
-        assert user is not None
-        assert user.role == "accountant"
+        assert user is None
+
+    # update_permissions is no longer handled — settings page renders with "Unknown settings action"
+    with rbac_app.app_context():
+        existing = User.query.filter_by(username="mech").first()
+        user_id = existing.id
 
     perm_response = rbac_client.post(
         "/settings?tab=permissions",
         data={
             "action": "update_permissions",
             "active_tab": "permissions",
-            "user_id": str(user.id),
-            "permissions": ["view_dashboard", "view_accounting", "export_accounting", "view_customers"],
+            "user_id": str(user_id),
+            "permissions": ["view_dashboard"],
         },
         follow_redirects=False,
     )
-    assert perm_response.status_code == 302
-    assert perm_response.headers["Location"].endswith("/settings?tab=permissions")
+    assert perm_response.status_code == 200
 
     with rbac_app.app_context():
-        updated = User.query.get(user.id)
-        assert updated is not None
-        assert updated.can("view_accounting") is True
-        assert updated.can("view_customers") is True
+        mech = User.query.filter_by(username="mech").first()
+        assert mech.permission_overrides == {} or mech.permission_overrides is None
 
 
 def test_inactive_users_cannot_log_in(rbac_client, rbac_app):

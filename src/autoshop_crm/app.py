@@ -24,8 +24,9 @@ from .routes.jobs import jobs_bp
 from .routes.auth import auth_bp
 from .routes.dashboard import dashboard_bp
 from .routes.accounting import accounting_bp
-from .routes.updates import updates_bp
 from .routes.help import help_bp
+from .routes.admin import admin_bp
+from .plugins.manager import plugin_manager
 
 
 def create_app() -> Flask:
@@ -53,12 +54,17 @@ def create_app() -> Flask:
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
-    app.register_blueprint(updates_bp)
     app.register_blueprint(accounting_bp, url_prefix="/accounting")
     app.register_blueprint(help_bp)
     app.register_blueprint(customers_bp, url_prefix="/customers")
     app.register_blueprint(vehicles_bp, url_prefix="/vehicles")
     app.register_blueprint(jobs_bp, url_prefix="/jobs")
+    app.register_blueprint(admin_bp)
+
+    app.jinja_env.globals.setdefault("plugin_nav_items", [])
+    app.jinja_env.globals.setdefault("plugin_dashboard_widgets", [])
+    app.jinja_env.globals.setdefault("plugin_settings_panels", [])
+    plugin_manager.init_app(app)
 
     @app.context_processor
     def inject_branding() -> dict[str, object]:

@@ -11,3 +11,5 @@ Flask-SQLAlchemy
 gunicorn
 psutil
 pytest
+gitpython
+requests

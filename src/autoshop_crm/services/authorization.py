@@ -26,6 +26,8 @@ PERMISSIONS: tuple[str, ...] = (
     "manage_permissions",
     "manage_theme",
     "manage_updates",
+    "manage_plugins",
+    "access_admin_panel",
 )
 
 ROLE_PERMISSIONS: dict[str, set[str]] = {
@@ -94,6 +96,8 @@ PERMISSION_LABELS: dict[str, str] = {
     "manage_permissions": "Set user permissions",
     "manage_theme": "Customize theme",
     "manage_updates": "Manage app updates",
+    "manage_plugins": "Install and manage plugins",
+    "access_admin_panel": "Access admin panel",
 }
 
 

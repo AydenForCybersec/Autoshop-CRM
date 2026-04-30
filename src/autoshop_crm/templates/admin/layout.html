@@ -1,0 +1,18 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<section class="hero-panel compact">
+    <p class="eyebrow">Admin</p>
+    <h1>{% block admin_title %}Admin Panel{% endblock %}</h1>
+    {% block admin_subtitle %}<p class="subcopy">System administration and configuration.</p>{% endblock %}
+</section>
+
+<nav class="tab-nav" aria-label="Admin sections">
+    <a href="{{ url_for('admin.index') }}" class="{{ 'active' if request.endpoint == 'admin.index' }}">Overview</a>
+    <a href="{{ url_for('admin.updates') }}" class="{{ 'active' if request.endpoint == 'admin.updates' }}">Updates</a>
+    <a href="{{ url_for('admin.plugins') }}" class="{{ 'active' if request.endpoint == 'admin.plugins' }}">Plugins</a>
+    <a href="{{ url_for('admin.danger') }}" class="{{ 'active' if request.endpoint == 'admin.danger' }}">Danger Zone</a>
+</nav>
+
+{% block admin_content %}{% endblock %}
+{% endblock %}

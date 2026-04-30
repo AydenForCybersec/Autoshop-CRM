@@ -50,8 +50,13 @@
                     {% if can('manage_settings') %}
                         <a href="{{ url_for('dashboard.settings') }}">Settings</a>
                     {% endif %}
-                    {% if can('manage_updates') %}
-                        <a href="{{ url_for('updates.index') }}">Updates</a>
+                    {% for item in plugin_nav_items %}
+                        {% if can(item.permission) %}
+                            <a href="{{ item.url }}">{{ item.label }}</a>
+                        {% endif %}
+                    {% endfor %}
+                    {% if can('access_admin_panel') %}
+                        <a href="{{ url_for('admin.index') }}">Admin</a>
                     {% endif %}
                     <a href="{{ url_for('help.index') }}">Help</a>
                     <span class="nav-user">{{ current_user.username }} · {{ role_labels.get(current_user.role_key, current_user.role_key|title) }}</span>

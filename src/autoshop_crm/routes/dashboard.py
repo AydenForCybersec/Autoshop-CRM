@@ -15,16 +15,10 @@ from ..models.customer import Customer
 from ..models.job import Job
 from ..models.settings import BusinessSettings
 from ..models.ui_preference import AppPreference
-from ..models.user import User
 from ..models.vehicle import Vehicle
 from ..services.authorization import (
-    PERMISSIONS,
-    PERMISSION_LABELS,
-    ROLE_LABELS,
     can_current_user,
-    normalize_role,
     require_permission,
-    resolve_role_permissions,
 )
 from ..services.branding import save_business_logo
 
@@ -37,7 +31,7 @@ STATUS_LABELS = {
     "on_hold": "On Hold",
     "completed": "Completed",
 }
-SETTINGS_TABS = {"business", "theme", "users", "permissions"}
+SETTINGS_TABS = {"business", "theme"}
 
 
 def _is_valid_hex_color(value: str) -> bool:
@@ -89,26 +83,13 @@ def _render_settings(
     form_values: dict[str, str | int | None] | None = None,
 ):
     """Render settings page with shared context."""
-    users = User.query.order_by(User.created_at.asc(), User.id.asc()).all()
     return render_template(
         "settings/index.html",
         settings=settings,
         preferences=preferences,
-        users=users,
         form_values=form_values or {},
         active_tab=active_tab,
-        roles=ROLE_LABELS,
-        permission_labels=PERMISSION_LABELS,
-        permissions=PERMISSIONS,
     )
-
-
-def _active_admin_count(excluding_user_id: int | None = None) -> int:
-    """Return count of enabled admin users."""
-    query = User.query.filter(User.role == "admin", User.is_active.is_(True))
-    if excluding_user_id is not None:
-        query = query.filter(User.id != excluding_user_id)
-    return query.count()
 
 
 @dashboard_bp.route("/")
@@ -164,7 +145,7 @@ def index() -> ResponseReturnValue:
 @dashboard_bp.route("/settings", methods=["GET", "POST"])
 @require_permission("manage_settings")
 def settings() -> ResponseReturnValue:
-    """Render and update business, users, permissions, and UI settings."""
+    """Render and update business and UI settings."""
     settings = _ensure_settings_row()
     preferences = _get_or_create_preferences()
     active_tab = _active_tab()
@@ -335,144 +316,6 @@ def settings() -> ResponseReturnValue:
             db.session.commit()
             flash("Theme and dashboard preferences updated.")
             return redirect(url_for("dashboard.settings", tab="theme"))
-
-        if action == "create_user":
-            if not can_current_user("manage_users"):
-                flash("You do not have permission to create users.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-
-            username = request.form.get("new_username", "").strip()
-            password = request.form.get("new_password", "")
-            role = normalize_role(request.form.get("new_role"))
-
-            if not username:
-                flash("Username is required.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-            if len(password) < 8:
-                flash("Password must be at least 8 characters.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-            if User.query.filter_by(username=username).first() is not None:
-                flash("That username is already taken.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-
-            user = User(username=username, role=role)
-            user.set_password(password)
-            db.session.add(user)
-            db.session.commit()
-            flash(f"User '{username}' created.")
-            return redirect(url_for("dashboard.settings", tab="users"))
-
-        if action == "update_user":
-            if not can_current_user("manage_users"):
-                flash("You do not have permission to update users.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-
-            user_id = request.form.get("user_id", type=int)
-            user = User.query.get_or_404(user_id)
-            role = normalize_role(request.form.get("role"))
-            is_active = bool(request.form.get("is_active"))
-
-            if user.role == "admin" and (role != "admin" or not is_active) and _active_admin_count(user.id) == 0:
-                flash("At least one active admin account is required.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-
-            new_username = request.form.get("username", "").strip()
-            if not new_username:
-                flash("Username cannot be blank.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-            if new_username != user.username:
-                if User.query.filter_by(username=new_username).first() is not None:
-                    flash(f"Username '{new_username}' is already taken.")
-                    return redirect(url_for("dashboard.settings", tab="users"))
-                user.username = new_username
-
-            user.role = role
-            user.is_active = is_active
-            if role == "admin":
-                user.permission_overrides = {}
-
-            labor_rate_raw = request.form.get("labor_rate", "").strip()
-            if labor_rate_raw:
-                try:
-                    user.labor_rate = float(labor_rate_raw)
-                except ValueError:
-                    flash("Labor rate must be a valid number.")
-                    return redirect(url_for("dashboard.settings", tab="users"))
-            else:
-                user.labor_rate = None
-
-            db.session.commit()
-            flash(f"Updated user '{user.username}'.")
-            return redirect(url_for("dashboard.settings", tab="users"))
-
-        if action == "reset_password":
-            if not can_current_user("manage_users"):
-                flash("You do not have permission to reset passwords.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-
-            user_id = request.form.get("user_id", type=int)
-            password = request.form.get("password", "")
-            if len(password) < 8:
-                flash("Password must be at least 8 characters.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-
-            user = User.query.get_or_404(user_id)
-            user.set_password(password)
-            db.session.commit()
-            flash(f"Password updated for '{user.username}'.")
-            return redirect(url_for("dashboard.settings", tab="users"))
-
-        if action == "delete_user":
-            if not can_current_user("manage_users"):
-                flash("You do not have permission to delete users.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-
-            user_id = request.form.get("user_id", type=int)
-            user = User.query.get_or_404(user_id)
-
-            from flask_login import current_user
-            if user.id == current_user.id:
-                flash("You cannot delete your own account.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-
-            if user.role == "admin" and _active_admin_count(user.id) == 0:
-                flash("Cannot delete the last admin account.")
-                return redirect(url_for("dashboard.settings", tab="users"))
-
-            # Null out labor entries so history is preserved without the user row
-            from ..models.job import JobLabor
-            JobLabor.query.filter_by(user_id=user.id).update({"user_id": None})
-
-            username = user.username
-            db.session.delete(user)
-            db.session.commit()
-            flash(f"User '{username}' has been deleted.")
-            return redirect(url_for("dashboard.settings", tab="users"))
-
-        if action == "update_permissions":
-            if not can_current_user("manage_permissions"):
-                flash("You do not have permission to modify user permissions.")
-                return redirect(url_for("dashboard.settings", tab="permissions"))
-
-            user_id = request.form.get("user_id", type=int)
-            user = User.query.get_or_404(user_id)
-            if user.role == "admin":
-                flash("Admin permissions are always full-access.")
-                return redirect(url_for("dashboard.settings", tab="permissions"))
-
-            selected = set(request.form.getlist("permissions"))
-            base_permissions = resolve_role_permissions(user.role_key)
-            overrides: dict[str, bool] = {}
-            for permission in PERMISSIONS:
-                selected_enabled = permission in selected
-                base_enabled = permission in base_permissions
-                if selected_enabled != base_enabled:
-                    overrides[permission] = selected_enabled
-
-            user.permission_overrides = overrides
-            db.session.commit()
-            flash(f"Permission overrides updated for '{user.username}'.")
-            return redirect(url_for("dashboard.settings", tab="permissions"))
 
         flash("Unknown settings action.")
 
