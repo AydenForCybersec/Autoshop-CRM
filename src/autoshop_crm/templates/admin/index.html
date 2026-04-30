@@ -1,0 +1,27 @@
+{% extends "admin/layout.html" %}
+{% block admin_title %}Admin Panel{% endblock %}
+
+{% block admin_content %}
+<section class="layout-two-col">
+    <article class="panel">
+        <div class="panel-head"><h2>System</h2></div>
+        <div class="form-grid">
+            <p class="entity-meta"><strong>Active Users:</strong> {{ user_count }}</p>
+            <p class="entity-meta"><strong>Installed Plugins:</strong> {{ installed_count }}</p>
+            {% if failed_count > 0 %}
+                <p class="entity-meta" style="color:var(--danger)"><strong>Failed Plugins:</strong> {{ failed_count }}</p>
+            {% endif %}
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel-head"><h2>Quick Links</h2></div>
+        <div class="form-grid">
+            <a class="btn btn-secondary" href="{{ url_for('admin.updates') }}">Check for Updates</a>
+            <a class="btn btn-secondary" href="{{ url_for('admin.plugins') }}">Manage Plugins</a>
+            <a class="btn btn-secondary" href="{{ url_for('dashboard.settings') }}">Shop Settings</a>
+            <a class="btn btn-danger" href="{{ url_for('admin.danger') }}">Danger Zone</a>
+        </div>
+    </article>
+</section>
+{% endblock %}
