@@ -5,7 +5,7 @@ REPO_URL="https://github.com/AydenForCybersec/Autoshop-CRM.git"
 INSTALL_DIR="$HOME/autoshop-crm"
 SERVICE_NAME="autoshop-crm"
 
-read -rp "Port to run on [5000]: " PORT
+read -rp "Port to run on [5000]: " PORT </dev/tty
 PORT="${PORT:-5000}"
 
 echo "==> Installing system packages"
