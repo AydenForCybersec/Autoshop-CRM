@@ -96,12 +96,203 @@ class PluginManager:
         return instance
 
     # ------------------------------------------------------------------
-    # Flask integration (implemented in Task 4)
+    # Flask integration
     # ------------------------------------------------------------------
 
     def init_app(self, app) -> None:
-        """Wire plugin manager into a Flask app."""
-        pass
+        """Wire plugin manager into a Flask app — call after all core blueprints."""
+        from .models import PluginState
+        self._app = app
+        self.plugins_dir = Path(app.root_path).parent.parent / "plugins"
+
+        manifests = self.discover()
+        self._manifests = manifests
+
+        with app.app_context():
+            for plugin_id, manifest in manifests.items():
+                state = PluginState.query.filter_by(plugin_id=plugin_id).first()
+                if state is None or not state.enabled:
+                    continue
+                instance = self._load_plugin(manifest)
+                if instance is None:
+                    if state:
+                        state.failed = True
+                        state.fail_reason = "Failed to load module"
+                        from ..extensions import db
+                        db.session.commit()
+                    continue
+                self._register_plugin(app, instance)
+                self._instances[plugin_id] = instance
+
+        app.jinja_env.globals["plugin_nav_items"] = self._collect_nav_items()
+        app.jinja_env.globals["plugin_dashboard_widgets"] = self._collect_dashboard_widgets()
+        app.jinja_env.globals["plugin_settings_panels"] = self._collect_settings_panels()
+
+    def _register_plugin(self, app, instance: PluginMixin) -> None:
+        """Register blueprint, template folder, and static folder for a plugin."""
+        bp = instance.get_blueprint()
+        if bp is not None:
+            url_prefix = f"/plugins/{instance.plugin_id}"
+            if bp.name not in app.blueprints:
+                app.register_blueprint(bp, url_prefix=url_prefix)
+
+        plugin_path: Path = self._manifests[instance.plugin_id]["_path"]
+        template_dir = plugin_path / "templates"
+        if template_dir.is_dir():
+            app.jinja_loader.searchpath.append(str(template_dir))  # type: ignore[union-attr]
+
+    def _collect_nav_items(self) -> list[dict]:
+        items = []
+        for inst in self._instances.values():
+            items.extend(inst.get_nav_items())
+        return items
+
+    def _collect_dashboard_widgets(self) -> list[dict]:
+        widgets = []
+        for inst in self._instances.values():
+            widgets.extend(inst.get_dashboard_widgets())
+        return sorted(widgets, key=lambda w: w.get("order", 99))
+
+    def _collect_settings_panels(self) -> list[dict]:
+        panels = []
+        for inst in self._instances.values():
+            panel = inst.get_settings_panel()
+            if panel is not None:
+                panels.append(panel)
+        return panels
+
+    # ------------------------------------------------------------------
+    # Install / uninstall
+    # ------------------------------------------------------------------
+
+    def install_from_path(self, path: Path) -> str:
+        """Copy a plugin folder into plugins_dir, register it. Returns plugin_id."""
+        from .models import PluginState
+        from ..extensions import db
+
+        manifest_path = path / "plugin.json"
+        if not manifest_path.exists():
+            raise ValueError(f"No plugin.json found in {path}")
+        manifest = json.loads(manifest_path.read_text())
+        if not _REQUIRED_MANIFEST_KEYS.issubset(manifest):
+            raise ValueError("plugin.json is missing required keys")
+
+        plugin_id = manifest["id"]
+        dest = self.plugins_dir / plugin_id
+        if dest.exists():
+            shutil.rmtree(dest)
+        shutil.copytree(path, dest)
+
+        state = PluginState.query.filter_by(plugin_id=plugin_id).first()
+        if state is None:
+            state = PluginState(plugin_id=plugin_id, enabled=True, settings={})
+            db.session.add(state)
+        else:
+            state.enabled = True
+            state.failed = False
+            state.fail_reason = None
+        db.session.commit()
+
+        manifest["_path"] = dest
+        self._manifests[plugin_id] = manifest
+        instance = self._load_plugin(manifest)
+        if instance is not None:
+            instance.on_install()
+            if self._app:
+                self._register_plugin(self._app, instance)
+            self._instances[plugin_id] = instance
+            self._refresh_jinja_globals()
+
+        return plugin_id
+
+    def install_from_url(self, url: str, plugin_path: str | None = None) -> str:
+        """Clone url into a temp dir, copy plugin_path subfolder, install."""
+        import tempfile
+        import git
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            git.Repo.clone_from(url, tmp_path)
+            source = tmp_path / plugin_path if plugin_path else tmp_path
+            if not (source / "plugin.json").exists():
+                raise ValueError(f"No plugin.json found at {source}")
+            return self.install_from_path(source)
+
+    def uninstall(self, plugin_id: str) -> None:
+        """Remove plugin folder and DB state."""
+        from .models import PluginState
+        from ..extensions import db
+
+        instance = self._instances.get(plugin_id)
+        if instance:
+            try:
+                instance.on_uninstall()
+            except Exception as exc:
+                logger.warning("Plugin %s: on_uninstall error — %s", plugin_id, exc)
+
+        plugin_dir = self.plugins_dir / plugin_id
+        if plugin_dir.exists():
+            shutil.rmtree(plugin_dir)
+
+        PluginState.query.filter_by(plugin_id=plugin_id).delete()
+        db.session.commit()
+
+        self._instances.pop(plugin_id, None)
+        self._manifests.pop(plugin_id, None)
+        self._refresh_jinja_globals()
+
+    def enable(self, plugin_id: str) -> None:
+        """Enable a plugin and register it."""
+        from .models import PluginState
+        from ..extensions import db
+
+        state = PluginState.query.filter_by(plugin_id=plugin_id).first()
+        if state:
+            state.enabled = True
+            db.session.commit()
+        manifest = self._manifests.get(plugin_id)
+        if manifest and plugin_id not in self._instances:
+            instance = self._load_plugin(manifest)
+            if instance and self._app:
+                self._register_plugin(self._app, instance)
+                self._instances[plugin_id] = instance
+                self._refresh_jinja_globals()
+
+    def disable(self, plugin_id: str) -> None:
+        """Disable a plugin (takes full effect after restart)."""
+        from .models import PluginState
+        from ..extensions import db
+
+        state = PluginState.query.filter_by(plugin_id=plugin_id).first()
+        if state:
+            state.enabled = False
+            db.session.commit()
+
+    def get_all_states(self) -> list[dict]:
+        """Return list of plugin info dicts for the management UI."""
+        from .models import PluginState
+        states = {s.plugin_id: s for s in PluginState.query.all()}
+        result = []
+        for plugin_id, manifest in self._manifests.items():
+            state = states.get(plugin_id)
+            result.append({
+                "id": plugin_id,
+                "name": manifest["name"],
+                "version": manifest["version"],
+                "description": manifest["description"],
+                "author": manifest["author"],
+                "enabled": state.enabled if state else False,
+                "failed": state.failed if state else False,
+                "fail_reason": state.fail_reason if state else None,
+                "installed_at": state.installed_at if state else None,
+            })
+        return result
+
+    def _refresh_jinja_globals(self) -> None:
+        if self._app:
+            self._app.jinja_env.globals["plugin_nav_items"] = self._collect_nav_items()
+            self._app.jinja_env.globals["plugin_dashboard_widgets"] = self._collect_dashboard_widgets()
+            self._app.jinja_env.globals["plugin_settings_panels"] = self._collect_settings_panels()
 
 
 plugin_manager = PluginManager()
