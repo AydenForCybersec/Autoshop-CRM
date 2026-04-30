@@ -34,16 +34,19 @@
             <li class="entity-item"><span class="entity-title">Completed Revenue</span><span class="entity-meta">${{ '%.2f'|format(total_revenue) }}</span></li>
             <li class="entity-item"><span class="entity-title">Open Pipeline</span><span class="entity-meta">${{ '%.2f'|format(open_pipeline) }}</span></li>
             <li class="entity-item"><span class="entity-title">Average Ticket</span><span class="entity-meta">${{ '%.2f'|format(avg_ticket) }}</span></li>
+            <li class="entity-item"><span class="entity-title">Completed Parts Revenue</span><span class="entity-meta">${{ '%.2f'|format(completed_parts_revenue) }}</span></li>
+            <li class="entity-item"><span class="entity-title">Completed Labor Revenue</span><span class="entity-meta">${{ '%.2f'|format(completed_labor_revenue) }}</span></li>
         </ul>
     </article>
 
     <article class="panel">
         <div class="panel-head">
             <h2>Recent Transactions</h2>
-            <span class="chip">{{ jobs|length }} rows</span>
+            <span class="chip">{{ job_rows|length }} rows</span>
         </div>
         <ul class="entity-list job-list">
-            {% for job in jobs %}
+            {% for row in job_rows %}
+                {% set job = row.job %}
                 <li class="entity-item job-item">
                     <div class="job-main">
                         <span class="entity-title">
@@ -55,7 +58,11 @@
                     <div class="job-sub">
                         <span class="entity-meta">
                             {{ job.created_at.strftime('%Y-%m-%d') if job.created_at else "Unknown" }} ·
-                            {% if job.cost is not none %}${{ '%.2f'|format(job.cost) }}{% else %}N/A{% endif %} ·
+                            Parts ${{ '%.2f'|format(row.parts_total) }} ·
+                            Labor ${{ '%.2f'|format(row.labor_total) }} ·
+                            Subtotal ${{ '%.2f'|format(row.subtotal) }} ·
+                            Tax ${{ '%.2f'|format(row.tax_amount) }} ·
+                            Total ${{ '%.2f'|format(row.total) }} ·
                             {{ job.description }}
                         </span>
                     </div>
