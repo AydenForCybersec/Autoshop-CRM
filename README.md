@@ -2,6 +2,18 @@
 
 Autoshop CRM is a shop management app for customer records, vehicle history, work orders, and day-to-day service operations.
 
+## Raspberry Pi Setup
+
+Run this on your Pi to install, configure, and start the app automatically:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/AydenForCybersec/Autoshop-CRM/main/setup-pi.sh | bash
+```
+
+Then open `http://<pi-ip>:5000` on any device on your network. Full guide: `docs/admin-guide/deploy-raspberry-pi.md`
+
+---
+
 ## Start Here
 
 - Non-technical staff: `docs/user-guide/getting-started.md`
