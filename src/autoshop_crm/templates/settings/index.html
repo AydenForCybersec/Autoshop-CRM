@@ -68,6 +68,16 @@
                 <input type="file" name="business_logo" accept=".png,.jpg,.jpeg,.webp,.gif,.svg">
             </label>
 
+            <label class="field">
+                <span>Sales Tax Rate (%)</span>
+                <input type="number" name="sales_tax_rate" min="0" max="30" step="0.001" placeholder="0.000" value="{{ '%.3f'|format(settings.sales_tax_rate) if settings.sales_tax_rate is not none else '' }}">
+            </label>
+
+            <label class="field">
+                <span>Card Fee Rate (%)</span>
+                <input type="number" name="card_fee_rate" min="0" max="10" step="0.001" placeholder="0.000" value="{{ '%.3f'|format(settings.card_fee_rate) if settings.card_fee_rate is not none else '' }}">
+            </label>
+
             <button type="submit" class="btn btn-primary">Save Business Profile</button>
         </div>
     </section>
@@ -232,12 +242,22 @@
                         <input type="hidden" name="user_id" value="{{ user.id }}">
 
                         <label class="field">
+                            <span>Username</span>
+                            <input type="text" name="username" value="{{ user.username }}" required>
+                        </label>
+
+                        <label class="field">
                             <span>Role</span>
                             <select name="role">
                                 {% for role_key, role_label in roles.items() %}
                                     <option value="{{ role_key }}" {% if user.role_key == role_key %}selected{% endif %}>{{ role_label }}</option>
                                 {% endfor %}
                             </select>
+                        </label>
+
+                        <label class="field">
+                            <span>Labor Rate ($/hr)</span>
+                            <input type="number" name="labor_rate" min="0" step="0.01" placeholder="0.00" value="{{ '%.2f'|format(user.labor_rate) if user.labor_rate is not none else '' }}">
                         </label>
 
                         <label class="check-row">
@@ -258,6 +278,14 @@
                             <input type="password" name="password" minlength="8" required>
                         </label>
                         <button type="submit" class="btn btn-secondary">Set New Password</button>
+                    </form>
+
+                    <form method="post" onsubmit="return confirm('Permanently delete {{ user.username }}? This cannot be undone.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="delete_user">
+                        <input type="hidden" name="active_tab" value="users">
+                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                        <button type="submit" class="btn btn-danger">Delete Account</button>
                     </form>
                 </section>
             {% endfor %}

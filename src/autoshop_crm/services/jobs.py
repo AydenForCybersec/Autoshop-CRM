@@ -8,7 +8,7 @@ from typing import Optional
 from sqlalchemy.orm import joinedload
 
 from ..extensions import db
-from ..models.job import JOB_STATUSES, Job, JobExpense, JobPart
+from ..models.job import JOB_STATUSES, Job, JobExpense, JobLabor, JobPart
 from .time import utc_now_naive
 
 
@@ -21,7 +21,7 @@ def get_jobs_for_vehicle(vehicle_id: int) -> list[Job]:
     """Return all jobs associated with a vehicle id."""
     return (
         Job.query.filter_by(vehicle_id=vehicle_id)
-        .options(joinedload(Job.parts), joinedload(Job.expenses))
+        .options(joinedload(Job.parts), joinedload(Job.expenses), joinedload(Job.labor))
         .order_by(Job.created_at.desc(), Job.id.desc())
         .all()
     )
@@ -77,6 +77,7 @@ def create_job_part(
     *,
     job: Job,
     part_name: str,
+    unit_price: float | None = None,
     supplier: str | None = None,
     part_price: float | None = None,
     labor_cost: float | None = None,
@@ -95,6 +96,7 @@ def create_job_part(
     part = JobPart(
         job_id=job.id,
         part_name=part_name.strip(),
+        unit_price=float(unit_price) if unit_price is not None else None,
         supplier=normalized_supplier,
         part_price=float(part_price or 0.0),
         labor_cost=float(labor_cost or 0.0),
@@ -126,6 +128,28 @@ def get_active_warranty_parts_for_vehicle(
         .order_by(JobPart.warranty_expires_on.asc(), JobPart.purchased_on.desc(), JobPart.id.desc())
         .all()
     )
+
+
+def create_job_labor(
+    *,
+    job: Job,
+    user_id: int | None,
+    hours: float,
+    rate_at_time: float,
+    notes: str | None = None,
+) -> JobLabor:
+    """Create a labor entry for a job and persist it."""
+    entry = JobLabor(
+        job_id=job.id,
+        user_id=user_id,
+        hours=hours,
+        rate_at_time=rate_at_time,
+        notes=notes.strip() if notes and notes.strip() else None,
+        created_at=utc_now_naive(),
+    )
+    db.session.add(entry)
+    db.session.commit()
+    return entry
 
 
 def create_job_expense(

@@ -1,25 +1,12 @@
 """Job/work-order ORM models."""
 
 from datetime import date
-from decimal import Decimal, ROUND_CEILING
 from sqlalchemy.orm import validates
 
 from ..extensions import db
 from ..services.time import utc_now_naive
 
 JOB_STATUSES: tuple[str, ...] = ("open", "in_progress", "on_hold", "completed")
-
-
-def _ceil_money(value: float) -> float:
-    """Round non-negative monetary values up to the nearest cent.
-
-    Tiny binary-float noise (for example 30.020000000000003) should not trigger an
-    extra cent when the monetary value is already at a cent boundary.
-    """
-    normalized = Decimal(str(value)) - Decimal("0.000000001")
-    if normalized < Decimal("0"):
-        normalized = Decimal("0")
-    return float(normalized.quantize(Decimal("0.01"), rounding=ROUND_CEILING))
 
 
 class Job(db.Model):
@@ -50,6 +37,12 @@ class Job(db.Model):
         cascade="all, delete-orphan",
         order_by="desc(JobExpense.incurred_on), desc(JobExpense.id)",
     )
+    labor = db.relationship(
+        "JobLabor",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        order_by="desc(JobLabor.created_at), desc(JobLabor.id)",
+    )
 
     @validates("status")
     def _validate_status(self, _key: str, value: str | None) -> str:
@@ -58,38 +51,24 @@ class Job(db.Model):
             raise ValueError("Invalid job status.")
         return normalized
 
-    @validates("cost")
-    def _validate_cost(self, _key: str, value: float | None) -> float | None:
-        if value is None:
-            return None
-        if value < 0:
-            raise ValueError("Cost cannot be negative.")
-        return _ceil_money(float(value))
-
     def __repr__(self) -> str:
         """Return a compact debug representation for logs/shell."""
         return f"<Job {self.id} status={self.status}>"
 
     @property
     def expenses_total(self) -> float:
-        """Return summed expenses attached to this repair."""
+        """Return summed legacy expenses attached to this repair."""
         return float(sum((expense.amount or 0.0) for expense in self.expenses))
 
     @property
-    def invoice_subtotal(self) -> float:
-        """Return customer-facing subtotal based on per-part price + labor."""
-        return float(sum((part.invoice_line_total for part in self.parts)))
+    def parts_total(self) -> float:
+        """Return summed part costs (unit_price × 1) for this repair."""
+        return float(sum((part.unit_price or 0.0) for part in self.parts))
 
-    def invoice_tax(self, tax_percentage: float | None) -> float:
-        """Return tax amount for invoice subtotal based on configured rate."""
-        rate = float(tax_percentage or 0.0)
-        if rate < 0:
-            rate = 0.0
-        return self.invoice_subtotal * (rate / 100.0)
-
-    def invoice_total(self, tax_percentage: float | None) -> float:
-        """Return invoice grand total (subtotal + tax)."""
-        return self.invoice_subtotal + self.invoice_tax(tax_percentage)
+    @property
+    def labor_total(self) -> float:
+        """Return summed labor cost (hours × rate) for this repair."""
+        return float(sum((entry.hours * entry.rate_at_time) for entry in self.labor))
 
 
 class JobPart(db.Model):
@@ -100,9 +79,8 @@ class JobPart(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey("repair_orders.id"), nullable=False, index=True)
     part_name = db.Column(db.String(180), nullable=False)
+    unit_price = db.Column(db.Float, nullable=True)
     supplier = db.Column(db.String(180))
-    part_price = db.Column(db.Float, nullable=False, default=0.0)
-    labor_cost = db.Column(db.Float, nullable=False, default=0.0)
     warranty_years = db.Column(db.Integer)
     purchased_on = db.Column(db.Date, nullable=False)
     warranty_expires_on = db.Column(db.Date)
@@ -126,14 +104,6 @@ class JobPart(db.Model):
             raise ValueError("Warranty years cannot be negative.")
         return value
 
-    @validates("part_price", "labor_cost")
-    def _validate_prices(self, _key: str, value: float | None) -> float:
-        if value is None:
-            return 0.0
-        if value < 0:
-            raise ValueError("Part price and labor cost cannot be negative.")
-        return _ceil_money(float(value))
-
     @validates("purchased_on", "warranty_expires_on")
     def _validate_dates(self, _key: str, value: date | None) -> date | None:
         if value is None:
@@ -145,11 +115,6 @@ class JobPart(db.Model):
     def __repr__(self) -> str:
         """Return a compact debug representation for logs/shell."""
         return f"<JobPart {self.id} job={self.job_id} part={self.part_name!r}>"
-
-    @property
-    def invoice_line_total(self) -> float:
-        """Return customer-facing line total (part price + labor)."""
-        return float(self.part_price or 0.0) + float(self.labor_cost or 0.0)
 
 
 class JobExpense(db.Model):
@@ -181,7 +146,7 @@ class JobExpense(db.Model):
             raise ValueError("Expense amount is required.")
         if value < 0:
             raise ValueError("Expense amount cannot be negative.")
-        return _ceil_money(float(value))
+        return float(value)
 
     @validates("incurred_on")
     def _validate_incurred_on(self, _key: str, value: date | None) -> date:
@@ -194,3 +159,40 @@ class JobExpense(db.Model):
     def __repr__(self) -> str:
         """Return a compact debug representation for logs/shell."""
         return f"<JobExpense {self.id} job={self.job_id} amount={self.amount}>"
+
+
+class JobLabor(db.Model):
+    """Represents a labor entry for a job, linked to a mechanic."""
+
+    __tablename__ = "job_labor"
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("repair_orders.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+    hours = db.Column(db.Float, nullable=False)
+    rate_at_time = db.Column(db.Float, nullable=False)
+    notes = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=utc_now_naive, nullable=False)
+
+    job = db.relationship("Job", back_populates="labor")
+    mechanic = db.relationship("User")
+
+    @property
+    def line_total(self) -> float:
+        """Return hours × rate."""
+        return float(self.hours * self.rate_at_time)
+
+    @validates("hours")
+    def _validate_hours(self, _key: str, value: float | None) -> float:
+        if value is None or value <= 0:
+            raise ValueError("Hours must be greater than zero.")
+        return float(value)
+
+    @validates("rate_at_time")
+    def _validate_rate(self, _key: str, value: float | None) -> float:
+        if value is None or value < 0:
+            raise ValueError("Labor rate cannot be negative.")
+        return float(value)
+
+    def __repr__(self) -> str:
+        return f"<JobLabor {self.id} job={self.job_id} hours={self.hours} rate={self.rate_at_time}>"

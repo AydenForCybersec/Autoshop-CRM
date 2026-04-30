@@ -16,4 +16,6 @@ class BusinessSettings(db.Model):
     invoice_footer_message = db.Column(db.Text)
     tax_percentage = db.Column(db.Float, nullable=False, default=0.0)
     shop_logo = db.Column(db.String(255))
+    sales_tax_rate = db.Column(db.Float, nullable=True)
+    card_fee_rate = db.Column(db.Float, nullable=True)
     setup_complete = db.Column(db.Boolean, nullable=False, default=False)

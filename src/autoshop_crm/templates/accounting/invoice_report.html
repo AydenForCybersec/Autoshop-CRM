@@ -1,0 +1,185 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Invoice Report | {{ app_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .rpt-actions {
+        display: flex;
+        gap: .75rem;
+        padding: 1rem 1.5rem;
+        background: var(--surface, #f4f4f4);
+        border-bottom: 1px solid var(--line, #ddd);
+    }
+
+    .report {
+        max-width: 900px;
+        margin: 1.5rem auto 3rem;
+        padding: 2rem 2.5rem;
+        background: #fff;
+        color: #111;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 13px;
+        border: 1px solid #ddd;
+        box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    }
+
+    /* Header */
+    .rpt-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1.25rem;
+    }
+    .rpt-logo {
+        max-height: 70px;
+        max-width: 220px;
+        object-fit: contain;
+    }
+    .rpt-logo-text {
+        font-size: 20px;
+        font-weight: 800;
+        color: #c0392b;
+        text-transform: uppercase;
+    }
+    .rpt-title-block { text-align: right; }
+    .rpt-title-block h1 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #c0392b;
+        margin: 0 0 .25rem;
+    }
+    .rpt-title-block p { margin: 0; font-size: 12px; color: #555; }
+
+    /* Table */
+    .rpt-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+        font-size: 13px;
+    }
+    .rpt-table thead tr {
+        background: #e8501a;
+        color: #fff;
+    }
+    .rpt-table th {
+        padding: 7px 10px;
+        text-align: left;
+        font-weight: 700;
+        border: 1px solid #c0392b;
+    }
+    .rpt-table th.num { text-align: right; }
+    .rpt-table td {
+        padding: 5px 10px;
+        border: 1px solid #ddd;
+        vertical-align: middle;
+    }
+    .rpt-table td.num { text-align: right; }
+    .rpt-table tbody tr:nth-child(even) td { background: #fafafa; }
+    .rpt-table tbody tr:hover td { background: #fff3ee; }
+
+    /* Totals row */
+    .rpt-table tfoot tr td {
+        font-weight: 700;
+        border-top: 2px solid #111;
+        background: #f4f4f4;
+        padding: 7px 10px;
+    }
+
+    /* Zero rows */
+    .rpt-zero { color: #bbb; }
+
+    @media print {
+        .rpt-actions,
+        .topbar,
+        .flash-list { display: none !important; }
+        .page-frame { padding: 0 !important; }
+        .app-shell { display: block !important; }
+        .report {
+            border: none;
+            box-shadow: none;
+            margin: 0;
+            padding: 1.25rem 1.75rem;
+            max-width: 100%;
+        }
+        .rpt-table tbody tr:hover td { background: inherit; }
+    }
+</style>
+
+<div class="rpt-actions">
+    <button class="btn btn-primary" onclick="window.print()">Print / Save PDF</button>
+    <a class="btn btn-secondary" href="{{ url_for('accounting.index', start_date=start_date, end_date=end_date) }}">Back to Accounting</a>
+</div>
+
+<div class="report">
+    <div class="rpt-header">
+        <div>
+            {% if settings and settings.shop_logo %}
+                <img class="rpt-logo" src="{{ url_for('static', filename=settings.shop_logo) }}" alt="">
+            {% else %}
+                <span class="rpt-logo-text">{{ (settings.shop_name if settings and settings.shop_name else app_name) }}</span>
+            {% endif %}
+        </div>
+        <div class="rpt-title-block">
+            <h1>
+                Invoice Report
+                {% if start_date or end_date %}
+                    {{ start_date or '…' }} to {{ end_date or '…' }}
+                {% else %}
+                    All Time
+                {% endif %}
+            </h1>
+            <p>{{ print_date }}</p>
+            <p>{{ jobs|length }} invoice{{ 's' if jobs|length != 1 else '' }}</p>
+        </div>
+    </div>
+
+    <table class="rpt-table">
+        <thead>
+            <tr>
+                <th>Invoice Date</th>
+                <th>Invoice #</th>
+                <th class="num">Parts</th>
+                <th class="num">Labor</th>
+                <th class="num">Tax ({{ '%.3f' | format(tax_rate) }}%)</th>
+                <th class="num">Total Due</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr class="{{ 'rpt-zero' if job.cost is none and job.parts_total == 0 and job.labor_total == 0 else '' }}">
+                <td>{{ job.created_at.strftime('%-m/%-d/%Y') if job.created_at else '—' }}</td>
+                <td>{{ job.id }}</td>
+                <td class="num">${{ '%.2f' | format(job.parts_total) }}</td>
+                <td class="num">${{ '%.2f' | format(job.labor_total) }}</td>
+                <td class="num">${{ '%.2f' | format((job.parts_total + job.labor_total) * tax_rate / 100) }}</td>
+                <td class="num">
+                    {% if job.cost is not none %}
+                        ${{ '%.2f' | format(job.cost) }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>{{ job.status | replace('_', ' ') | title }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" style="text-align:center;color:#888;font-style:italic;padding:1.5rem">No invoices found for this date range.</td></tr>
+            {% endfor %}
+        </tbody>
+        {% if jobs %}
+        <tfoot>
+            <tr>
+                <td></td>
+                <td></td>
+                <td class="num">${{ '%.2f' | format(total_parts) }}</td>
+                <td class="num">${{ '%.2f' | format(total_labor) }}</td>
+                <td class="num">${{ '%.2f' | format(total_tax) }}</td>
+                <td class="num">${{ '%.2f' | format(total_due) }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+        {% endif %}
+    </table>
+</div>
+{% endblock %}

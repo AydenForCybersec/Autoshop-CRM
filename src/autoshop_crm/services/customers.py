@@ -61,12 +61,35 @@ def create_customer(
     name: str,
     email: Optional[str] = None,
     phone: Optional[str] = None,
+    address: Optional[str] = None,
     created_at: Optional[datetime] = None,
 ) -> Customer:
     """Create and persist a customer record."""
     normalized_email = email.strip().lower() if email and email.strip() else None
-    customer = Customer(name=name.strip(), email=normalized_email, phone=phone, created_at=created_at or utc_now_naive())
+    customer = Customer(
+        name=name.strip(),
+        email=normalized_email,
+        phone=phone,
+        address=address.strip() if address and address.strip() else None,
+        created_at=created_at or utc_now_naive(),
+    )
     db.session.add(customer)
+    db.session.commit()
+    return customer
+
+
+def update_customer(
+    customer: Customer,
+    name: str,
+    email: Optional[str] = None,
+    phone: Optional[str] = None,
+    address: Optional[str] = None,
+) -> Customer:
+    """Update mutable fields on an existing customer record."""
+    customer.name = name.strip()
+    customer.email = email.strip().lower() if email and email.strip() else None
+    customer.phone = phone or None
+    customer.address = address.strip() if address and address.strip() else None
     db.session.commit()
     return customer
 
