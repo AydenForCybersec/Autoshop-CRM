@@ -46,8 +46,8 @@ PREFERRED_URL_SCHEME=http
 UPDATE_ENABLED=true
 UPDATE_LOCAL_ONLY=true
 UPDATE_CONFIRM_PHRASE=CONFIRM
-UPDATE_ALLOWED_COMMAND_PREFIXES=flask db upgrade,sudo systemctl restart autoshop-crm
-UPDATE_POST_UPDATE_COMMANDS=flask db upgrade,sudo systemctl restart autoshop-crm
+UPDATE_ALLOWED_COMMAND_PREFIXES="flask db upgrade,sudo systemctl restart autoshop-crm"
+UPDATE_POST_UPDATE_COMMANDS="flask db upgrade,sudo systemctl restart autoshop-crm"
 EOF
 
 echo "==> Running database migrations"
