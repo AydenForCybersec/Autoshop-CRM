@@ -15,19 +15,19 @@ import sqlalchemy as sa
 
 
 def upgrade():
+    """Create plugin_states table."""
     op.create_table(
         "plugin_states",
         sa.Column("id", sa.Integer, primary_key=True),
         sa.Column("plugin_id", sa.String(64), nullable=False, unique=True),
-        sa.Column("enabled", sa.Boolean, nullable=False),
-        sa.Column("settings", sa.JSON, nullable=False),
-        sa.Column("installed_at", sa.DateTime, nullable=False),
-        sa.Column("failed", sa.Boolean, nullable=False),
+        sa.Column("enabled", sa.Boolean, nullable=False, server_default=sa.true()),
+        sa.Column("settings", sa.JSON, nullable=False, server_default="{}"),
+        sa.Column("installed_at", sa.DateTime, nullable=False, server_default=sa.func.now()),
+        sa.Column("failed", sa.Boolean, nullable=False, server_default=sa.false()),
         sa.Column("fail_reason", sa.Text, nullable=True),
     )
-    op.create_index("ix_plugin_states_plugin_id", "plugin_states", ["plugin_id"])
 
 
 def downgrade():
-    op.drop_index("ix_plugin_states_plugin_id", "plugin_states")
+    """Drop plugin_states table."""
     op.drop_table("plugin_states")

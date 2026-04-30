@@ -6,7 +6,7 @@ from .job import Job, JobExpense, JobLabor, JobPart
 from .user import User
 from .settings import BusinessSettings
 from .ui_preference import AppPreference
-from autoshop_crm.plugins.models import PluginState  # noqa: F401
+from ..plugins.models import PluginState  # noqa: F401
 
 __all__ = [
     "Customer",
