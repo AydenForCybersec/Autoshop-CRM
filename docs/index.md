@@ -31,6 +31,8 @@
 - `docs/user-guide/common-problems.md`
 
 ### Admin Guide (Owners/Admins)
+- `docs/admin-guide/deploy-raspberry-pi.md` ← start here for local/on-site Pi setup
+- `docs/admin-guide/deploy-server.md` ← start here for internet-accessible server setup
 - `docs/admin-guide/initial-setup.md`
 - `docs/admin-guide/users-roles-permissions.md`
 - `docs/admin-guide/settings-branding.md`

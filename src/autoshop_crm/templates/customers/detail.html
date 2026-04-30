@@ -12,6 +12,38 @@
     </div>
 </section>
 
+<section class="panel">
+    <div class="panel-head">
+        <h2>Edit Customer</h2>
+        <span class="chip">Profile</span>
+    </div>
+    <form method="post" action="{{ url_for('customers.update', customer_id=customer.id) }}" class="form-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label class="field">
+            <span>Name</span>
+            <input type="text" name="name" value="{{ customer.name }}" required>
+        </label>
+
+        <label class="field">
+            <span>Phone</span>
+            <input type="text" name="phone" value="{{ customer.phone or '' }}" placeholder="(555) 123-4567">
+        </label>
+
+        <label class="field">
+            <span>Email</span>
+            <input type="email" name="email" value="{{ customer.email or '' }}" placeholder="name@example.com">
+        </label>
+
+        <label class="field">
+            <span>Address</span>
+            <input type="text" name="address" value="{{ customer.address or '' }}" placeholder="123 Main St, City, State">
+        </label>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
+</section>
+
 <section class="layout-two-col">
     <article class="panel">
         <div class="panel-head">

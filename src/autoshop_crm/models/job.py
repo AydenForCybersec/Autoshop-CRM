@@ -37,6 +37,12 @@ class Job(db.Model):
         cascade="all, delete-orphan",
         order_by="desc(JobExpense.incurred_on), desc(JobExpense.id)",
     )
+    labor = db.relationship(
+        "JobLabor",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        order_by="desc(JobLabor.created_at), desc(JobLabor.id)",
+    )
 
     @validates("status")
     def _validate_status(self, _key: str, value: str | None) -> str:
@@ -51,8 +57,18 @@ class Job(db.Model):
 
     @property
     def expenses_total(self) -> float:
-        """Return summed expenses attached to this repair."""
+        """Return summed legacy expenses attached to this repair."""
         return float(sum((expense.amount or 0.0) for expense in self.expenses))
+
+    @property
+    def parts_total(self) -> float:
+        """Return summed part costs (unit_price × 1) for this repair."""
+        return float(sum((part.unit_price or 0.0) for part in self.parts))
+
+    @property
+    def labor_total(self) -> float:
+        """Return summed labor cost (hours × rate) for this repair."""
+        return float(sum((entry.hours * entry.rate_at_time) for entry in self.labor))
 
 
 class JobPart(db.Model):
@@ -63,6 +79,7 @@ class JobPart(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_id = db.Column(db.Integer, db.ForeignKey("repair_orders.id"), nullable=False, index=True)
     part_name = db.Column(db.String(180), nullable=False)
+    unit_price = db.Column(db.Float, nullable=True)
     supplier = db.Column(db.String(180))
     warranty_years = db.Column(db.Integer)
     purchased_on = db.Column(db.Date, nullable=False)
@@ -142,3 +159,40 @@ class JobExpense(db.Model):
     def __repr__(self) -> str:
         """Return a compact debug representation for logs/shell."""
         return f"<JobExpense {self.id} job={self.job_id} amount={self.amount}>"
+
+
+class JobLabor(db.Model):
+    """Represents a labor entry for a job, linked to a mechanic."""
+
+    __tablename__ = "job_labor"
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.Integer, db.ForeignKey("repair_orders.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+    hours = db.Column(db.Float, nullable=False)
+    rate_at_time = db.Column(db.Float, nullable=False)
+    notes = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=utc_now_naive, nullable=False)
+
+    job = db.relationship("Job", back_populates="labor")
+    mechanic = db.relationship("User")
+
+    @property
+    def line_total(self) -> float:
+        """Return hours × rate."""
+        return float(self.hours * self.rate_at_time)
+
+    @validates("hours")
+    def _validate_hours(self, _key: str, value: float | None) -> float:
+        if value is None or value <= 0:
+            raise ValueError("Hours must be greater than zero.")
+        return float(value)
+
+    @validates("rate_at_time")
+    def _validate_rate(self, _key: str, value: float | None) -> float:
+        if value is None or value < 0:
+            raise ValueError("Labor rate cannot be negative.")
+        return float(value)
+
+    def __repr__(self) -> str:
+        return f"<JobLabor {self.id} job={self.job_id} hours={self.hours} rate={self.rate_at_time}>"

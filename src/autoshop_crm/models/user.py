@@ -26,6 +26,7 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(30), nullable=False, default="owner")
     permission_overrides = db.Column(db.JSON, nullable=False, default=dict)
     is_active = db.Column(db.Boolean, nullable=False, default=True)
+    labor_rate = db.Column(db.Float, nullable=True)
     created_at = db.Column(db.DateTime, default=utc_now_naive)
 
     def set_password(self, password: str) -> None:

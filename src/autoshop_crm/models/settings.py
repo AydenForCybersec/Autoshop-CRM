@@ -14,4 +14,6 @@ class BusinessSettings(db.Model):
     shop_email = db.Column(db.String(120))
     shop_address = db.Column(db.Text)
     shop_logo = db.Column(db.String(255))
+    sales_tax_rate = db.Column(db.Float, nullable=True)
+    card_fee_rate = db.Column(db.Float, nullable=True)
     setup_complete = db.Column(db.Boolean, nullable=False, default=False)

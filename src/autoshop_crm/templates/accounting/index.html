@@ -21,6 +21,7 @@
         </label>
         <button type="submit" class="btn btn-primary">Apply Filter</button>
         <a class="btn btn-secondary" href="{{ url_for('accounting.jobs_csv', start_date=start_date, end_date=end_date) }}">Export CSV Ledger</a>
+        <a class="btn btn-secondary" href="{{ url_for('accounting.invoice_report', start_date=start_date, end_date=end_date) }}" target="_blank">Print Invoice Report</a>
     </form>
 </section>
 

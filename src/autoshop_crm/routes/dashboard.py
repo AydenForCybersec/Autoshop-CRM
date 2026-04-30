@@ -66,7 +66,7 @@ def _ensure_settings_row() -> BusinessSettings:
     """Return singleton business settings row, creating defaults if missing."""
     settings = BusinessSettings.query.first()
     if settings is None:
-        settings = BusinessSettings(shop_name="Autoshop CRM", setup_complete=False)
+        settings = BusinessSettings(shop_name="Autoshop CRM", setup_complete=False, sales_tax_rate=6.225)
         db.session.add(settings)
         db.session.commit()
     return settings
@@ -206,6 +206,10 @@ def settings() -> ResponseReturnValue:
             if uploaded_logo:
                 settings.shop_logo = uploaded_logo
 
+            for rate_field in ("sales_tax_rate", "card_fee_rate"):
+                raw = request.form.get(rate_field, "").strip()
+                setattr(settings, rate_field, float(raw) if raw else None)
+
             db.session.commit()
             flash("Business profile updated.")
             return redirect(url_for("dashboard.settings", tab="business"))
@@ -335,10 +339,30 @@ def settings() -> ResponseReturnValue:
                 flash("At least one active admin account is required.")
                 return redirect(url_for("dashboard.settings", tab="users"))
 
+            new_username = request.form.get("username", "").strip()
+            if not new_username:
+                flash("Username cannot be blank.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+            if new_username != user.username:
+                if User.query.filter_by(username=new_username).first() is not None:
+                    flash(f"Username '{new_username}' is already taken.")
+                    return redirect(url_for("dashboard.settings", tab="users"))
+                user.username = new_username
+
             user.role = role
             user.is_active = is_active
             if role == "admin":
                 user.permission_overrides = {}
+
+            labor_rate_raw = request.form.get("labor_rate", "").strip()
+            if labor_rate_raw:
+                try:
+                    user.labor_rate = float(labor_rate_raw)
+                except ValueError:
+                    flash("Labor rate must be a valid number.")
+                    return redirect(url_for("dashboard.settings", tab="users"))
+            else:
+                user.labor_rate = None
 
             db.session.commit()
             flash(f"Updated user '{user.username}'.")
@@ -359,6 +383,33 @@ def settings() -> ResponseReturnValue:
             user.set_password(password)
             db.session.commit()
             flash(f"Password updated for '{user.username}'.")
+            return redirect(url_for("dashboard.settings", tab="users"))
+
+        if action == "delete_user":
+            if not can_current_user("manage_users"):
+                flash("You do not have permission to delete users.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+
+            user_id = request.form.get("user_id", type=int)
+            user = User.query.get_or_404(user_id)
+
+            from flask_login import current_user
+            if user.id == current_user.id:
+                flash("You cannot delete your own account.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+
+            if user.role == "admin" and _active_admin_count(user.id) == 0:
+                flash("Cannot delete the last admin account.")
+                return redirect(url_for("dashboard.settings", tab="users"))
+
+            # Null out labor entries so history is preserved without the user row
+            from ..models.job import JobLabor
+            JobLabor.query.filter_by(user_id=user.id).update({"user_id": None})
+
+            username = user.username
+            db.session.delete(user)
+            db.session.commit()
+            flash(f"User '{username}' has been deleted.")
             return redirect(url_for("dashboard.settings", tab="users"))
 
         if action == "update_permissions":

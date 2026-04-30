@@ -1,0 +1,15 @@
+[Unit]
+Description=Autoshop CRM
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/autoshop-crm
+Environment="FLASK_ENV=production"
+Environment="SECRET_KEY=change-this-to-a-random-string"
+Environment="DATABASE_URL=sqlite:////home/pi/autoshop-crm/autoshop.db"
+ExecStart=/home/pi/autoshop-crm/venv/bin/gunicorn -w 2 -b 0.0.0.0:5000 wsgi:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

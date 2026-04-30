@@ -10,9 +10,14 @@ from flask import Blueprint, Response, flash, redirect, render_template, request
 from flask.typing import ResponseReturnValue
 from sqlalchemy import func
 
+from datetime import date
+
+from sqlalchemy.orm import joinedload
+
 from ..extensions import db
 from ..models.job import Job
 from ..models.vehicle import Vehicle
+from ..models.settings import BusinessSettings
 from ..services.authorization import require_permission
 from ..services.dates import parse_optional_datetime
 
@@ -54,7 +59,7 @@ def index() -> ResponseReturnValue:
         flash(str(exc))
         return redirect(url_for("accounting.index"))
     jobs_query = _jobs_query(start_dt, end_dt)
-    jobs = jobs_query.order_by(Job.created_at.desc(), Job.id.desc()).limit(200).all()
+    jobs = jobs_query.order_by(Job.created_at.desc(), Job.id.desc()).limit(5).all()
 
     totals_query = _jobs_query(start_dt, end_dt)
     total_revenue = totals_query.with_entities(func.sum(Job.cost)).filter(Job.status == "completed").scalar() or 0.0
@@ -81,6 +86,47 @@ def index() -> ResponseReturnValue:
         avg_ticket=avg_ticket,
         start_date=start_raw,
         end_date=end_raw,
+    )
+
+
+@accounting_bp.route("/invoice-report")
+@require_permission("view_accounting")
+def invoice_report() -> ResponseReturnValue:
+    """Render a printable invoice report for a date range."""
+    try:
+        start_dt, end_dt, start_raw, end_raw = _date_window()
+    except ValueError as exc:
+        flash(str(exc))
+        return redirect(url_for("accounting.index"))
+
+    from ..models.job import JobLabor
+    jobs = (
+        _jobs_query(start_dt, end_dt)
+        .options(joinedload(Job.parts), joinedload(Job.labor))
+        .order_by(Job.created_at.asc(), Job.id.asc())
+        .all()
+    )
+    settings = BusinessSettings.query.first()
+
+    tax_rate = (settings.sales_tax_rate or 0.0) if settings else 0.0
+
+    total_parts = sum(j.parts_total for j in jobs)
+    total_labor = sum(j.labor_total for j in jobs)
+    total_tax = round((total_parts + total_labor) * tax_rate / 100, 2)
+    total_due = sum(j.cost for j in jobs if j.cost is not None)
+
+    return render_template(
+        "accounting/invoice_report.html",
+        jobs=jobs,
+        settings=settings,
+        tax_rate=tax_rate,
+        start_date=start_raw,
+        end_date=end_raw,
+        total_parts=total_parts,
+        total_labor=total_labor,
+        total_tax=total_tax,
+        total_due=total_due,
+        print_date=date.today().strftime("%A, %B %-d, %Y"),
     )
 
 

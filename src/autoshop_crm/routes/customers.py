@@ -9,6 +9,7 @@ from ..services.customers import (
     get_customers_paginated,
     get_customer,
     create_customer,
+    update_customer,
     merge_customer_data,
 )
 from ..services.dates import parse_optional_datetime
@@ -46,6 +47,7 @@ def create() -> ResponseReturnValue:
     name = request.form["name"].strip()
     email = request.form.get("email", "").strip() or None
     phone = request.form.get("phone", "").strip() or None
+    address = request.form.get("address", "").strip() or None
     created_at_raw = request.form.get("created_at", "").strip()
     duplicate_action = request.form.get("duplicate_action", "").strip()
     selected_customer_id = request.form.get("selected_customer_id", type=int)
@@ -60,7 +62,7 @@ def create() -> ResponseReturnValue:
     if duplicates and not duplicate_action:
         return render_template(
             "customers/confirm_duplicate.html",
-            pending={"name": name, "email": email or "", "phone": phone or "", "created_at": created_at_raw},
+            pending={"name": name, "email": email or "", "phone": phone or "", "address": address or "", "created_at": created_at_raw},
             duplicates=duplicates,
         )
 
@@ -86,6 +88,24 @@ def create() -> ResponseReturnValue:
             flash("Email already exists on another customer. New customer created without email.", "warning")
             email = None
 
-    create_customer(name, email, phone, created_at=created_at)
+    create_customer(name, email, phone, address=address, created_at=created_at)
     flash("Customer created.", "success")
     return redirect(url_for("customers.list_customers"))
+
+
+@customers_bp.route("/<int:customer_id>/update", methods=["POST"])
+@require_permission("manage_customers")
+def update(customer_id: int) -> ResponseReturnValue:
+    """Update a customer's profile fields."""
+    customer = get_customer(customer_id)
+    name = request.form.get("name", "").strip()
+    if not name:
+        flash("Name cannot be blank.")
+        return redirect(url_for("customers.customer_detail", customer_id=customer_id))
+
+    email = request.form.get("email", "").strip() or None
+    phone = request.form.get("phone", "").strip() or None
+    address = request.form.get("address", "").strip() or None
+    update_customer(customer, name=name, email=email, phone=phone, address=address)
+    flash("Customer updated.")
+    return redirect(url_for("customers.customer_detail", customer_id=customer_id))

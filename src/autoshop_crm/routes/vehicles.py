@@ -14,6 +14,7 @@ from ..services.jobs import get_active_warranty_parts_for_vehicle, get_jobs_for_
 from ..services.dates import parse_optional_datetime
 from ..services.reports import build_vehicle_history_pdf
 from ..models.settings import BusinessSettings
+from ..models.user import User
 
 vehicles_bp = Blueprint("vehicles", __name__)
 
@@ -25,7 +26,8 @@ def vehicle_detail(vehicle_id: int) -> ResponseReturnValue:
     vehicle = get_vehicle(vehicle_id)
     jobs = get_jobs_for_vehicle(vehicle_id)
     warranty_parts = get_active_warranty_parts_for_vehicle(vehicle_id=vehicle_id)
-    return render_template("vehicles/detail.html", vehicle=vehicle, jobs=jobs, warranty_parts=warranty_parts)
+    mechanics = User.query.filter_by(is_active=True).order_by(User.username).all()
+    return render_template("vehicles/detail.html", vehicle=vehicle, jobs=jobs, warranty_parts=warranty_parts, mechanics=mechanics)
 
 
 @vehicles_bp.route("/create", methods=["POST"])
