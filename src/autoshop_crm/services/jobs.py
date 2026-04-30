@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import date, datetime
 from typing import Optional
 
@@ -37,7 +38,7 @@ def create_job(
     job = Job(
         vehicle_id=vehicle_id,
         description=description.strip(),
-        cost=cost,
+        cost=_ceil_cents(float(cost)) if cost is not None else None,
         created_at=created_at or utc_now_naive(),
     )
     db.session.add(job)
@@ -59,9 +60,14 @@ def update_job_cost(job: Job, cost: float | None) -> Job:
     """Update editable total cost for a repair."""
     if cost is not None and cost < 0:
         raise ValueError("Cost cannot be negative.")
-    job.cost = cost
+    job.cost = _ceil_cents(float(cost)) if cost is not None else None
     db.session.commit()
     return job
+
+
+def _ceil_cents(value: float) -> float:
+    """Round a monetary value up to the nearest cent."""
+    return math.ceil(value * 100) / 100
 
 
 def _safe_add_years(base_date: date, years: int) -> date:
@@ -78,9 +84,9 @@ def create_job_part(
     job: Job,
     part_name: str,
     unit_price: float | None = None,
-    supplier: str | None = None,
     part_price: float | None = None,
     labor_cost: float | None = None,
+    supplier: str | None = None,
     warranty_years: int | None = None,
     purchased_on: date | None = None,
     notes: str | None = None,
@@ -97,9 +103,9 @@ def create_job_part(
         job_id=job.id,
         part_name=part_name.strip(),
         unit_price=float(unit_price) if unit_price is not None else None,
+        part_price=_ceil_cents(float(part_price)) if part_price is not None else None,
+        labor_cost=_ceil_cents(float(labor_cost)) if labor_cost is not None else None,
         supplier=normalized_supplier,
-        part_price=float(part_price or 0.0),
-        labor_cost=float(labor_cost or 0.0),
         warranty_years=warranty_years,
         purchased_on=effective_purchased_on,
         warranty_expires_on=expires_on,
@@ -107,7 +113,8 @@ def create_job_part(
     )
     db.session.add(part)
     db.session.flush()
-    job.cost = job.invoice_subtotal
+    db.session.expire(job)
+    job.cost = round(job.invoice_subtotal, 2)
     db.session.commit()
     return part
 
@@ -148,6 +155,9 @@ def create_job_labor(
         created_at=utc_now_naive(),
     )
     db.session.add(entry)
+    db.session.flush()
+    db.session.expire(job)
+    job.cost = round(job.parts_total + job.labor_total, 2)
     db.session.commit()
     return entry
 
@@ -169,7 +179,7 @@ def create_job_expense(
     expense = JobExpense(
         job_id=job.id,
         description=description.strip(),
-        amount=float(amount),
+        amount=_ceil_cents(float(amount)),
         vendor=normalized_vendor,
         incurred_on=effective_date,
         notes=normalized_notes,

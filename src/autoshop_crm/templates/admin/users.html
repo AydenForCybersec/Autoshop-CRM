@@ -1,0 +1,149 @@
+{% extends "admin/layout.html" %}
+
+{% block admin_title %}Users{% endblock %}
+{% block admin_subtitle %}<p class="subcopy">Manage user accounts and granular permission overrides.</p>{% endblock %}
+
+{% block admin_content %}
+<section class="layout-two-col">
+
+    <!-- Create user -->
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Create User</h2>
+        </div>
+        <form method="post" action="{{ url_for('admin.user_create') }}" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="field">
+                <span>Username</span>
+                <input type="text" name="username" required>
+            </label>
+            <label class="field">
+                <span>Role</span>
+                <select name="role">
+                    {% for role_key, role_label in roles.items() %}
+                        <option value="{{ role_key }}">{{ role_label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="field">
+                <span>Password (min 8 chars)</span>
+                <input type="password" name="password" minlength="8" required>
+            </label>
+            <label class="field">
+                <span>Labor Rate ($/hr, optional)</span>
+                <input type="number" name="labor_rate" min="0" step="0.01" placeholder="75.00">
+            </label>
+            <button type="submit" class="btn btn-primary">Create User</button>
+        </form>
+    </article>
+
+    <!-- User list -->
+    <article class="panel">
+        <div class="panel-head">
+            <h2>Current Users</h2>
+            <span class="chip">{{ users|length }} accounts</span>
+        </div>
+        {% for user in users %}
+            <details class="user-card">
+                <summary>
+                    <strong>{{ user.username }}</strong>
+                    <span class="entity-meta">{{ roles.get(user.role_key, user.role_key|title) }}</span>
+                    {% if not user.is_active %}<span class="status-badge status-on_hold">Inactive</span>{% endif %}
+                </summary>
+
+                <div class="user-card-body">
+                    <!-- Edit -->
+                    <form method="post" action="{{ url_for('admin.user_edit', user_id=user.id) }}" class="form-grid">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label class="field">
+                            <span>Username</span>
+                            <input type="text" name="username" value="{{ user.username }}" required>
+                        </label>
+                        <label class="field">
+                            <span>Role</span>
+                            <select name="role">
+                                {% for role_key, role_label in roles.items() %}
+                                    <option value="{{ role_key }}" {% if user.role_key == role_key %}selected{% endif %}>{{ role_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label class="field">
+                            <span>Labor Rate ($/hr)</span>
+                            <input type="number" name="labor_rate" min="0" step="0.01" placeholder="0.00" value="{{ '%.2f'|format(user.labor_rate) if user.labor_rate is not none else '' }}">
+                        </label>
+                        <label class="check-row">
+                            <input type="checkbox" name="is_active" value="1" {% if user.is_active %}checked{% endif %}>
+                            <span>Account active</span>
+                        </label>
+                        <button type="submit" class="btn btn-secondary">Save Changes</button>
+                    </form>
+
+                    <!-- Reset password -->
+                    <form method="post" action="{{ url_for('admin.user_reset_password', user_id=user.id) }}" class="form-grid" style="margin-top:.75rem">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <label class="field">
+                            <span>New Password</span>
+                            <input type="password" name="password" minlength="8" required>
+                        </label>
+                        <button type="submit" class="btn btn-secondary">Reset Password</button>
+                    </form>
+
+                    <!-- Delete -->
+                    <form method="post" action="{{ url_for('admin.user_delete', user_id=user.id) }}" onsubmit="return confirm('Delete {{ user.username }}? This cannot be undone.');" style="margin-top:.5rem">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-danger">Delete Account</button>
+                    </form>
+                </div>
+            </details>
+        {% else %}
+            <p class="empty-state">No users found.</p>
+        {% endfor %}
+    </article>
+</section>
+
+<!-- Permissions -->
+<section class="panel" style="margin-top:1.5rem">
+    <div class="panel-head">
+        <h2>Granular Permissions</h2>
+        <span class="chip">Per-user overrides</span>
+    </div>
+    <p class="entity-meta">Deviations from the role default are saved as overrides. Admin is always full-access.</p>
+
+    <div class="settings-permission-grid">
+        {% for user in users %}
+            <article class="settings-user-card">
+                <header>
+                    <strong>{{ user.username }}</strong>
+                    <span class="entity-meta">{{ roles.get(user.role_key, user.role_key|title) }}</span>
+                </header>
+
+                {% if user.role_key == "admin" %}
+                    <p class="entity-meta">Admin always has full access.</p>
+                {% else %}
+                    {% set effective = user.get_effective_permissions() %}
+                    <form method="post" action="{{ url_for('admin.user_permissions', user_id=user.id) }}" class="form-grid">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="permission-list">
+                            {% for permission in permissions %}
+                                <label class="check-row">
+                                    <input type="checkbox" name="permissions" value="{{ permission }}" {% if permission in effective %}checked{% endif %}>
+                                    <span>{{ permission_labels.get(permission, permission) }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn btn-secondary">Save Permissions</button>
+                    </form>
+                {% endif %}
+            </article>
+        {% endfor %}
+    </div>
+</section>
+
+<style>
+.user-card { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: .5rem; }
+.user-card > summary { padding: .6rem 1rem; cursor: pointer; display: flex; align-items: center; gap: .5rem; list-style: none; }
+.user-card > summary::-webkit-details-marker { display: none; }
+.user-card[open] > summary { border-bottom: 1px solid var(--line); }
+.user-card-body { padding: 1rem; }
+</style>
+{% endblock %}

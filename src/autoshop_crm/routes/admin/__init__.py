@@ -8,3 +8,4 @@ from . import panel  # noqa: E402, F401
 from . import updates_ui  # noqa: E402, F401
 from . import danger  # noqa: E402, F401
 from . import plugins_ui  # noqa: E402, F401
+from . import users_ui  # noqa: E402, F401

@@ -81,10 +81,13 @@ def invoice(job_id: int) -> ResponseReturnValue:
         .get_or_404(job_id)
     )
     settings = BusinessSettings.query.first()
-    parts_total = job.parts_total
-    labor_total = job.labor_total
-    subtotal = parts_total + labor_total
+    parts_total = round(sum((p.part_price or 0.0) for p in job.parts), 2)
+    labor_total = round(sum((p.labor_cost or 0.0) for p in job.parts), 2)
+    subtotal = round(parts_total + labor_total, 2)
     total_due = job.cost if job.cost is not None else subtotal
+    tax_rate = (settings.tax_percentage or 0.0) if settings else 0.0
+    tax_amount = round(subtotal * tax_rate / 100, 2)
+    total_with_tax = round(subtotal + tax_amount, 2)
     return render_template(
         "jobs/invoice.html",
         job=job,
@@ -93,8 +96,10 @@ def invoice(job_id: int) -> ResponseReturnValue:
         labor_total=labor_total,
         subtotal=subtotal,
         total_due=total_due,
-        sales_tax_rate=settings.sales_tax_rate or 0.0 if settings else 0.0,
-        card_fee_rate=settings.card_fee_rate or 0.0 if settings else 0.0,
+        tax_amount=tax_amount,
+        total_with_tax=total_with_tax,
+        sales_tax_rate=tax_rate,
+        card_fee_rate=(settings.card_fee_rate or 0.0) if settings else 0.0,
     )
 
 

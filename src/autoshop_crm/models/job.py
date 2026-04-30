@@ -70,6 +70,21 @@ class Job(db.Model):
         """Return summed labor cost (hours × rate) for this repair."""
         return float(sum((entry.hours * entry.rate_at_time) for entry in self.labor))
 
+    @property
+    def invoice_subtotal(self) -> float:
+        """Return invoice subtotal: sum of per-part part_price + labor_cost."""
+        return float(
+            sum((p.part_price or 0.0) + (p.labor_cost or 0.0) for p in self.parts)
+        )
+
+    def invoice_tax(self, tax_rate: float) -> float:
+        """Return tax amount for the given rate (percentage)."""
+        return round(self.invoice_subtotal * tax_rate / 100, 2)
+
+    def invoice_total(self, tax_rate: float) -> float:
+        """Return invoice total including tax."""
+        return round(self.invoice_subtotal + self.invoice_tax(tax_rate), 2)
+
 
 class JobPart(db.Model):
     """Represents a part used in a job, optionally with warranty details."""
@@ -80,6 +95,8 @@ class JobPart(db.Model):
     job_id = db.Column(db.Integer, db.ForeignKey("repair_orders.id"), nullable=False, index=True)
     part_name = db.Column(db.String(180), nullable=False)
     unit_price = db.Column(db.Float, nullable=True)
+    part_price = db.Column(db.Float, nullable=True)
+    labor_cost = db.Column(db.Float, nullable=True)
     supplier = db.Column(db.String(180))
     warranty_years = db.Column(db.Integer)
     purchased_on = db.Column(db.Date, nullable=False)

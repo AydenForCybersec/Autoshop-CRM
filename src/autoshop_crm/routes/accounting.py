@@ -29,8 +29,8 @@ class _JobRow:
 
     def __init__(self, job: Job, tax_rate: float) -> None:
         self.job = job
-        self.parts_total = job.parts_total
-        self.labor_total = job.labor_total
+        self.parts_total = round(sum((p.part_price or 0.0) for p in job.parts), 2)
+        self.labor_total = round(sum((p.labor_cost or 0.0) for p in job.parts), 2)
         self.subtotal = round(self.parts_total + self.labor_total, 2)
         self.tax_amount = round(self.subtotal * tax_rate / 100, 2)
         self.total = round(self.subtotal + self.tax_amount, 2)
@@ -73,7 +73,7 @@ def index() -> ResponseReturnValue:
         flash(str(exc))
         return redirect(url_for("accounting.index"))
     settings = BusinessSettings.query.first()
-    tax_rate = (settings.sales_tax_rate or 0.0) if settings else 0.0
+    tax_rate = (settings.tax_percentage or 0.0) if settings else 0.0
 
     recent_jobs = (
         _jobs_query(start_dt, end_dt)
@@ -92,8 +92,12 @@ def index() -> ResponseReturnValue:
         .options(joinedload(Job.parts), joinedload(Job.labor))
         .all()
     )
-    completed_parts_revenue = round(sum(j.parts_total for j in completed_jobs), 2)
-    completed_labor_revenue = round(sum(j.labor_total for j in completed_jobs), 2)
+    completed_parts_revenue = round(
+        sum(sum(p.part_price or 0.0 for p in j.parts) for j in completed_jobs), 2
+    )
+    completed_labor_revenue = round(
+        sum(sum(p.labor_cost or 0.0 for p in j.parts) for j in completed_jobs), 2
+    )
 
     open_pipeline = (
         _jobs_query(start_dt, end_dt)
@@ -141,7 +145,7 @@ def invoice_report() -> ResponseReturnValue:
     )
     settings = BusinessSettings.query.first()
 
-    tax_rate = (settings.sales_tax_rate or 0.0) if settings else 0.0
+    tax_rate = (settings.tax_percentage or 0.0) if settings else 0.0
 
     total_parts = sum(j.parts_total for j in jobs)
     total_labor = sum(j.labor_total for j in jobs)
@@ -171,7 +175,14 @@ def jobs_csv() -> ResponseReturnValue:
         start_dt, end_dt, _, _ = _date_window()
     except ValueError as exc:
         return Response(str(exc), status=400, mimetype="text/plain")
-    jobs = _jobs_query(start_dt, end_dt).order_by(Job.created_at.asc(), Job.id.asc()).all()
+    settings = BusinessSettings.query.first()
+    tax_rate = (settings.tax_percentage or 0.0) if settings else 0.0
+    jobs = (
+        _jobs_query(start_dt, end_dt)
+        .options(joinedload(Job.parts))
+        .order_by(Job.created_at.asc(), Job.id.asc())
+        .all()
+    )
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -180,28 +191,37 @@ def jobs_csv() -> ResponseReturnValue:
             "job_id",
             "job_date",
             "status",
-            "cost",
-            "description",
             "vehicle_id",
             "customer_id",
             "vehicle_make",
             "vehicle_model",
             "vehicle_year",
+            "parts_total",
+            "labor_total",
+            "subtotal",
+            "tax_amount",
+            "total_with_tax",
+            "description",
         ]
     )
     for job in jobs:
+        row = _JobRow(job, tax_rate)
         writer.writerow(
             [
                 job.id,
                 job.created_at.isoformat() if job.created_at else "",
                 job.status,
-                job.cost if job.cost is not None else "",
-                job.description,
                 job.vehicle_id,
                 job.vehicle.customer_id if job.vehicle else "",
                 job.vehicle.make if job.vehicle else "",
                 job.vehicle.model if job.vehicle else "",
                 job.vehicle.year if job.vehicle else "",
+                row.parts_total,
+                row.labor_total,
+                row.subtotal,
+                row.tax_amount,
+                row.total,
+                job.description,
             ]
         )
 

@@ -396,14 +396,17 @@
                 {% if job.cost is not none and job.cost != subtotal %}
                 <tr><td>Adjustments</td><td>${{ '%.2f' | format(job.cost - subtotal) }}</td></tr>
                 {% endif %}
-                <tr id="row-tax" style="display:none">
-                    <td id="cell-tax-label">Tax (0%)</td><td id="cell-tax">$0.00</td>
+                {% if sales_tax_rate and (job.parts or job.labor) %}
+                <tr><td><strong>Subtotal</strong></td><td>${{ '%.2f' | format(subtotal) }}</td></tr>
+                {% endif %}
+                <tr id="row-tax"{% if not sales_tax_rate %} style="display:none"{% endif %}>
+                    <td id="cell-tax-label">Tax ({{ sales_tax_rate }}%)</td><td id="cell-tax">${{ '%.2f' | format(tax_amount) }}</td>
                 </tr>
                 <tr id="row-card-fee" style="display:none">
                     <td>Card Fee</td><td id="cell-card-fee">$0.00</td>
                 </tr>
                 <tr class="total-due">
-                    <td>Total Due</td><td id="cell-total">${{ '%.2f' | format(total_due) }}</td>
+                    <td>Total Due</td><td id="cell-total">${{ '%.2f' | format(total_with_tax if sales_tax_rate else total_due) }}</td>
                 </tr>
             </table>
             <div class="inv-thankyou">Thank you for your business.</div>
