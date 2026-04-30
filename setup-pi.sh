@@ -51,8 +51,8 @@ UPDATE_POST_UPDATE_COMMANDS="flask db upgrade,sudo systemctl restart autoshop-cr
 EOF
 
 echo "==> Running database migrations"
-set -a; source .env; set +a
-flask db upgrade
+FLASK_APP=autoshop_crm:create_app PYTHONPATH=src DATABASE_URL="sqlite:///${INSTALL_DIR}/autoshop.db" \
+    "$INSTALL_DIR/venv/bin/flask" db upgrade
 
 echo "==> Installing systemd service"
 sudo tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
