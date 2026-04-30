@@ -51,7 +51,7 @@ UPDATE_POST_UPDATE_COMMANDS=flask db upgrade,sudo systemctl restart autoshop-crm
 EOF
 
 echo "==> Running database migrations"
-export $(grep -v '^#' .env | xargs)
+set -a; source .env; set +a
 flask db upgrade
 
 echo "==> Installing systemd service"
