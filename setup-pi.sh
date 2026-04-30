@@ -51,6 +51,7 @@ UPDATE_POST_UPDATE_COMMANDS="flask db upgrade,sudo systemctl restart autoshop-cr
 EOF
 
 echo "==> Running database migrations"
+rm -f "${INSTALL_DIR}/autoshop.db"
 FLASK_APP=autoshop_crm:create_app PYTHONPATH=src DATABASE_URL="sqlite:///${INSTALL_DIR}/autoshop.db" \
     "$INSTALL_DIR/venv/bin/flask" db upgrade
 
