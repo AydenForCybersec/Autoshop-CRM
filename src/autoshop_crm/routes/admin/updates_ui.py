@@ -28,8 +28,15 @@ def _get_update_manager() -> UpdateManager:
 
 
 def _is_local_request() -> bool:
-    remote = (request.headers.get("X-Forwarded-For", request.remote_addr) or "").split(",")[0].strip()
-    return remote in {"127.0.0.1", "::1", "localhost"}
+    import ipaddress
+    raw = (request.headers.get("X-Forwarded-For", request.remote_addr) or "").split(",")[0].strip()
+    if raw in {"127.0.0.1", "::1", "localhost"}:
+        return True
+    try:
+        addr = ipaddress.ip_address(raw)
+        return addr.is_private or addr.is_loopback
+    except ValueError:
+        return False
 
 
 @admin_bp.route("/updates", methods=["GET"])
