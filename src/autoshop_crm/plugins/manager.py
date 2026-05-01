@@ -110,6 +110,8 @@ class PluginManager:
 
         with app.app_context():
             for plugin_id, manifest in manifests.items():
+                # Register declared permissions first so can() works for all roles.
+                self._register_permissions(manifest)
                 state = PluginState.query.filter_by(plugin_id=plugin_id).first()
                 instance = self._load_plugin(manifest)
                 if instance is None:
@@ -128,6 +130,16 @@ class PluginManager:
         app.jinja_env.globals["plugin_nav_items"] = self._collect_nav_items()
         app.jinja_env.globals["plugin_dashboard_widgets"] = self._collect_dashboard_widgets()
         app.jinja_env.globals["plugin_settings_panels"] = self._collect_settings_panels()
+
+    def _register_permissions(self, manifest: dict) -> None:
+        """Add plugin-declared permissions to the live RBAC module."""
+        from ..services import authorization as _auth
+        for perm in manifest.get("declares_permissions", []):
+            if perm not in _auth.PERMISSIONS:
+                _auth.PERMISSIONS = _auth.PERMISSIONS + (perm,)
+                _auth.PERMISSION_LABELS.setdefault(perm, perm.replace("_", " ").title())
+            for role_key in ("admin", "owner"):
+                _auth.ROLE_PERMISSIONS[role_key].add(perm)
 
     def _register_plugin(self, app, instance: PluginMixin) -> None:
         """Register blueprint for a plugin. Blueprint must set template_folder='templates'."""
@@ -200,6 +212,7 @@ class PluginManager:
 
         manifest["_path"] = dest
         self._manifests[plugin_id] = manifest
+        self._register_permissions(manifest)
         instance = self._load_plugin(manifest)
         if instance is not None:
             instance.on_install()
