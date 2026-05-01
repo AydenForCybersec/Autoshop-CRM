@@ -52,7 +52,7 @@ a {
 }
 
 .app-shell {
-    width: min(1100px, calc(100% - 2rem));
+    width: min(1600px, calc(100% - 2rem));
     margin: 1.4rem auto 2.2rem;
 }
 
@@ -113,6 +113,7 @@ a {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .main-nav a {
@@ -143,7 +144,7 @@ a {
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1rem;
 }
 
@@ -274,6 +275,12 @@ a {
 .layout-two-col {
     display: grid;
     grid-template-columns: 2fr 1fr;
+    gap: 1rem;
+}
+
+.plugin-widget-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 1rem;
 }
 

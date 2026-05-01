@@ -93,7 +93,7 @@
 </section>
 
 {% if plugin_dashboard_widgets %}
-<section>
+<section class="plugin-widget-grid">
     {% for widget in plugin_dashboard_widgets %}
         {% if can(widget.permission) %}
             {% with vars = widget.vars %}
