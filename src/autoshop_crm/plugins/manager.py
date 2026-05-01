@@ -111,8 +111,6 @@ class PluginManager:
         with app.app_context():
             for plugin_id, manifest in manifests.items():
                 state = PluginState.query.filter_by(plugin_id=plugin_id).first()
-                if state is None or not state.enabled:
-                    continue
                 instance = self._load_plugin(manifest)
                 if instance is None:
                     if state:
@@ -121,8 +119,11 @@ class PluginManager:
                         from ..extensions import db
                         db.session.commit()
                     continue
+                # Register blueprint for ALL discovered plugins at startup,
+                # even disabled ones — Flask forbids registration after first request.
                 self._register_plugin(app, instance)
-                self._instances[plugin_id] = instance
+                if state and state.enabled:
+                    self._instances[plugin_id] = instance
 
         app.jinja_env.globals["plugin_nav_items"] = self._collect_nav_items()
         app.jinja_env.globals["plugin_dashboard_widgets"] = self._collect_dashboard_widgets()
@@ -203,7 +204,12 @@ class PluginManager:
         if instance is not None:
             instance.on_install()
             if self._app:
-                self._register_plugin(self._app, instance)
+                try:
+                    self._register_plugin(self._app, instance)
+                except Exception as exc:
+                    # Flask forbids blueprint registration after the first request.
+                    # The plugin is installed; a service reload will activate its routes.
+                    logger.warning("Plugin %s: blueprint registration deferred (reload required) — %s", plugin_id, exc)
             self._instances[plugin_id] = instance
             self._refresh_jinja_globals()
         else:
@@ -264,11 +270,9 @@ class PluginManager:
         manifest = self._manifests.get(plugin_id)
         if manifest and plugin_id not in self._instances:
             instance = self._load_plugin(manifest)
-            if instance and self._app:
-                try:
-                    self._register_plugin(self._app, instance)
-                except Exception as exc:
-                    logger.error("Plugin %s: blueprint registration error — %s", plugin_id, exc)
+            if instance:
+                # Blueprint was registered at startup; just activate the instance.
+                # For plugins installed after startup, routes need a service reload.
                 self._instances[plugin_id] = instance
                 self._refresh_jinja_globals()
 

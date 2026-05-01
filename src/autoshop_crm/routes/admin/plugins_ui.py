@@ -96,7 +96,22 @@ def plugin_install_marketplace(plugin_id: str) -> ResponseReturnValue:
         return redirect(url_for("admin.plugins"))
     try:
         pid = plugin_manager.install_from_url(entry["repo_url"], entry.get("plugin_path"))
-        flash(f"Plugin '{pid}' installed.")
+        flash(f"Plugin '{pid}' installed. Reload the service to activate its routes.")
     except Exception as exc:
         flash(f"Install failed: {exc}")
+    return redirect(url_for("admin.plugins"))
+
+
+@admin_bp.route("/plugins/reload-service", methods=["POST"])
+@require_permission("access_admin_panel")
+def plugin_reload_service() -> ResponseReturnValue:
+    import subprocess
+    try:
+        subprocess.run(
+            ["sudo", "systemctl", "kill", "--signal=HUP", "--kill-who=main", "autoshop-crm"],
+            check=True, timeout=10,
+        )
+        flash("Service reloaded. New plugins are now active.")
+    except Exception as exc:
+        flash(f"Reload failed: {exc}", "error")
     return redirect(url_for("admin.plugins"))
