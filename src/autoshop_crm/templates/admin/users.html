@@ -21,7 +21,7 @@
                 <span>Role</span>
                 <select name="role">
                     {% for role_key, role_label in roles.items() %}
-                        <option value="{{ role_key }}">{{ role_label }}</option>
+                        <option value="{{ role_key }}" {% if role_key == 'service_writer' %}selected{% endif %}>{{ role_label }}</option>
                     {% endfor %}
                 </select>
             </label>

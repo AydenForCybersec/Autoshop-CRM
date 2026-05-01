@@ -106,7 +106,7 @@ def normalize_role(role: str | None) -> str:
     role_key = (role or "").strip().lower()
     if role_key in ROLE_PERMISSIONS:
         return role_key
-    return "owner"
+    return "service_writer"
 
 
 def resolve_role_permissions(role: str | None) -> set[str]:

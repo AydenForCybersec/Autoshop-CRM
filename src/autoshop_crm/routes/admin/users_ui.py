@@ -81,8 +81,8 @@ def user_edit(user_id: int) -> ResponseReturnValue:
     role = normalize_role(request.form.get("role"))
     is_active = bool(request.form.get("is_active"))
 
-    if user.role == "admin" and (role != "admin" or not is_active) and _active_admin_count(user.id) == 0:
-        flash("At least one active admin account is required.", "error")
+    if user.id == current_user.id and (role != "admin" or not is_active):
+        flash("You cannot demote or deactivate your own account.", "error")
         return redirect(url_for("admin.users"))
 
     new_username = request.form.get("username", "").strip()
@@ -135,9 +135,6 @@ def user_delete(user_id: int) -> ResponseReturnValue:
 
     if user.id == current_user.id:
         flash("You cannot delete your own account.", "error")
-        return redirect(url_for("admin.users"))
-    if user.role == "admin" and _active_admin_count(user.id) == 0:
-        flash("Cannot delete the last admin account.", "error")
         return redirect(url_for("admin.users"))
 
     JobLabor.query.filter_by(user_id=user.id).update({"user_id": None})
