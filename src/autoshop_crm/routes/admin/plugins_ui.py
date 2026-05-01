@@ -47,12 +47,15 @@ def plugin_toggle(plugin_id: str) -> ResponseReturnValue:
     from autoshop_crm.plugins.models import PluginState
     state = PluginState.query.filter_by(plugin_id=plugin_id).first()
     if state:
-        if state.enabled:
-            plugin_manager.disable(plugin_id)
-            flash(f"Plugin '{plugin_id}' disabled. Changes take effect after restart.")
-        else:
-            plugin_manager.enable(plugin_id)
-            flash(f"Plugin '{plugin_id}' enabled.")
+        try:
+            if state.enabled:
+                plugin_manager.disable(plugin_id)
+                flash(f"Plugin '{plugin_id}' disabled. Changes take effect after restart.")
+            else:
+                plugin_manager.enable(plugin_id)
+                flash(f"Plugin '{plugin_id}' enabled.")
+        except Exception as exc:
+            flash(f"Plugin '{plugin_id}': {exc}", "error")
     return redirect(url_for("admin.plugins"))
 
 

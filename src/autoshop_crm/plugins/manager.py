@@ -129,38 +129,40 @@ class PluginManager:
         app.jinja_env.globals["plugin_settings_panels"] = self._collect_settings_panels()
 
     def _register_plugin(self, app, instance: PluginMixin) -> None:
-        """Register blueprint, template folder, and static folder for a plugin."""
+        """Register blueprint for a plugin. Blueprint must set template_folder='templates'."""
         bp = instance.get_blueprint()
         if bp is not None:
             url_prefix = f"/plugins/{instance.plugin_id}"
             if bp.name not in app.blueprints:
                 app.register_blueprint(bp, url_prefix=url_prefix)
 
-        plugin_path: Path = self._manifests[instance.plugin_id]["_path"]
-        template_dir = plugin_path / "templates"
-        if template_dir.is_dir():
-            loader = app.jinja_loader
-            if loader is not None and hasattr(loader, "searchpath"):
-                loader.searchpath.append(str(template_dir))
-
     def _collect_nav_items(self) -> list[dict]:
         items = []
         for inst in self._instances.values():
-            items.extend(inst.get_nav_items())
+            try:
+                items.extend(inst.get_nav_items())
+            except Exception as exc:
+                logger.warning("Plugin %s: get_nav_items error — %s", inst.plugin_id, exc)
         return items
 
     def _collect_dashboard_widgets(self) -> list[dict]:
         widgets = []
         for inst in self._instances.values():
-            widgets.extend(inst.get_dashboard_widgets())
+            try:
+                widgets.extend(inst.get_dashboard_widgets())
+            except Exception as exc:
+                logger.warning("Plugin %s: get_dashboard_widgets error — %s", inst.plugin_id, exc)
         return sorted(widgets, key=lambda w: w.get("order", 99))
 
     def _collect_settings_panels(self) -> list[dict]:
         panels = []
         for inst in self._instances.values():
-            panel = inst.get_settings_panel()
-            if panel is not None:
-                panels.append(panel)
+            try:
+                panel = inst.get_settings_panel()
+                if panel is not None:
+                    panels.append(panel)
+            except Exception as exc:
+                logger.warning("Plugin %s: get_settings_panel error — %s", inst.plugin_id, exc)
         return panels
 
     # ------------------------------------------------------------------
@@ -263,7 +265,10 @@ class PluginManager:
         if manifest and plugin_id not in self._instances:
             instance = self._load_plugin(manifest)
             if instance and self._app:
-                self._register_plugin(self._app, instance)
+                try:
+                    self._register_plugin(self._app, instance)
+                except Exception as exc:
+                    logger.error("Plugin %s: blueprint registration error — %s", plugin_id, exc)
                 self._instances[plugin_id] = instance
                 self._refresh_jinja_globals()
 
