@@ -159,10 +159,17 @@ class PluginManager:
         return items
 
     def _collect_dashboard_widgets(self) -> list[dict]:
+        from types import SimpleNamespace
         widgets = []
         for inst in self._instances.values():
             try:
-                widgets.extend(inst.get_dashboard_widgets())
+                for w in inst.get_dashboard_widgets():
+                    # Convert vars dict to SimpleNamespace so templates can use
+                    # vars.key syntax without hitting dict method names (e.g. .items()).
+                    if isinstance(w.get("vars"), dict):
+                        w = dict(w)
+                        w["vars"] = SimpleNamespace(**w["vars"])
+                    widgets.append(w)
             except Exception as exc:
                 logger.warning("Plugin %s: get_dashboard_widgets error — %s", inst.plugin_id, exc)
         return sorted(widgets, key=lambda w: w.get("order", 99))

@@ -8,7 +8,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from ..extensions import db, login_manager
-from ..services.authorization import PERMISSIONS, apply_permission_overrides, normalize_role, resolve_role_permissions
+from ..services.authorization import PERMISSIONS, ROLE_PERMISSIONS, apply_permission_overrides, normalize_role, resolve_role_permissions
 from ..services.time import utc_now_naive
 
 
@@ -50,7 +50,10 @@ class User(UserMixin, db.Model):
     def get_effective_permissions(self) -> set[str]:
         """Return final permission set including per-user overrides."""
         if self.is_admin:
-            return set(PERMISSIONS)
+            # Use ROLE_PERMISSIONS["admin"] (a mutable set) rather than the
+            # PERMISSIONS tuple so that plugin-declared permissions added at
+            # runtime via .add() are visible here.
+            return set(ROLE_PERMISSIONS.get("admin", set()))
         base = resolve_role_permissions(self.role_key)
         return apply_permission_overrides(base, self.permission_overrides)
 
