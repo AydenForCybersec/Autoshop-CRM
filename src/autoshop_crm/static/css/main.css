@@ -198,6 +198,44 @@ a {
     color: #c8dfcf;
 }
 
+.theme-swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 0.65rem;
+}
+
+.swatch-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+}
+
+.swatch-item input[type="color"] {
+    width: 52px;
+    height: 52px;
+    border: 2px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 3px;
+    cursor: pointer;
+    background: none;
+    transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.swatch-item input[type="color"]:hover {
+    border-color: var(--brand);
+    transform: scale(1.08);
+}
+
+.swatch-item span {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+}
+
 .tab-nav {
     display: flex;
     align-items: center;

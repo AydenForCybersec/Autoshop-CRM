@@ -91,70 +91,64 @@
     <section class="layout-two-col">
         <article class="panel">
             <div class="panel-head">
-                <h2>Theme Tokens</h2>
+                <h2>Theme</h2>
                 <span class="chip">UI Preferences</span>
             </div>
-            <div class="form-grid">
-                <label class="field">
-                    <span>Primary Color</span>
+
+            <p class="entity-meta" style="margin-bottom:.85rem">Click any swatch to change its color. Changes preview live before saving.</p>
+
+            <div class="theme-swatch-grid">
+                <label class="swatch-item">
                     <input class="theme-token" type="color" data-var="--brand" name="primary_color" value="{{ fv.get('primary_color', preferences.primary_color) }}">
+                    <span>Primary</span>
                 </label>
-
-                <label class="field">
-                    <span>Accent Color</span>
+                <label class="swatch-item">
                     <input class="theme-token" type="color" data-var="--highlight" name="accent_color" value="{{ fv.get('accent_color', preferences.accent_color) }}">
+                    <span>Accent</span>
                 </label>
-
-                <label class="field">
-                    <span>Background Color</span>
+                <label class="swatch-item">
                     <input class="theme-token" type="color" data-var="--bg" name="background_color" value="{{ fv.get('background_color', preferences.background_color) }}">
+                    <span>Background</span>
                 </label>
-
-                <label class="field">
-                    <span>Panel Surface Color</span>
+                <label class="swatch-item">
                     <input class="theme-token" type="color" data-var="--surface" name="surface_color" value="{{ fv.get('surface_color', preferences.surface_color) }}">
+                    <span>Surface</span>
                 </label>
-
-                <label class="field">
-                    <span>Text Color</span>
+                <label class="swatch-item">
                     <input class="theme-token" type="color" data-var="--text" name="text_color" value="{{ fv.get('text_color', preferences.text_color) }}">
+                    <span>Text</span>
                 </label>
-
-                <label class="field">
-                    <span>Muted Text Color</span>
+                <label class="swatch-item">
                     <input class="theme-token" type="color" data-var="--muted" name="muted_color" value="{{ fv.get('muted_color', preferences.muted_color) }}">
+                    <span>Muted</span>
                 </label>
-
-                <label class="field">
-                    <span>Border/Line Color</span>
+                <label class="swatch-item">
                     <input class="theme-token" type="color" data-var="--line" name="line_color" value="{{ fv.get('line_color', preferences.line_color) }}">
+                    <span>Border</span>
                 </label>
-
-                <label class="field">
-                    <span>Success Color</span>
+                <label class="swatch-item">
                     <input class="theme-token" type="color" data-var="--success" name="success_color" value="{{ fv.get('success_color', preferences.success_color) }}">
+                    <span>Success</span>
                 </label>
-
-                <label class="field">
-                    <span>Warning Color</span>
+                <label class="swatch-item">
                     <input class="theme-token" type="color" data-var="--warning" name="warning_color" value="{{ fv.get('warning_color', preferences.warning_color) }}">
+                    <span>Warning</span>
                 </label>
-
-                <label class="field">
-                    <span>Danger Color</span>
+                <label class="swatch-item">
                     <input class="theme-token" type="color" data-var="--danger" name="danger_color" value="{{ fv.get('danger_color', preferences.danger_color) }}">
+                    <span>Danger</span>
                 </label>
+            </div>
 
-                <label class="field">
-                    <span>Recent Jobs on Dashboard</span>
-                    <input type="number" min="3" max="20" name="dashboard_jobs_limit" value="{{ fv.get('dashboard_jobs_limit', preferences.dashboard_jobs_limit) }}">
-                </label>
-
+            <div class="form-grid" style="margin-top:.75rem">
                 <label class="field">
                     <span>Corner Radius (px)</span>
                     <input class="theme-token-radius" type="number" min="6" max="28" name="radius_px" value="{{ fv.get('radius_px', preferences.radius_px) }}">
                 </label>
-
+                <label class="field">
+                    <span>Recent Jobs on Dashboard</span>
+                    <input type="number" min="3" max="20" name="dashboard_jobs_limit" value="{{ fv.get('dashboard_jobs_limit', preferences.dashboard_jobs_limit) }}">
+                </label>
                 <button type="submit" class="btn btn-primary">Save Theme</button>
             </div>
         </article>
