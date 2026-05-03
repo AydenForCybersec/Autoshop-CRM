@@ -47,6 +47,8 @@ ROLE_PERMISSIONS: dict[str, set[str]] = {
         "manage_permissions",
         "manage_theme",
         "manage_updates",
+        "manage_plugins",
+        "access_admin_panel",
     },
     "mechanic": {
         "view_dashboard",
