@@ -243,6 +243,13 @@ class PluginManager:
         """Clone url into a temp dir, copy plugin_path subfolder, install."""
         import tempfile
         import git
+        from urllib.parse import urlparse
+
+        parsed = urlparse(url)
+        if parsed.scheme not in {"https"}:
+            raise ValueError(f"Plugin URL must use HTTPS (got '{parsed.scheme or 'no scheme'}').")
+        if not parsed.netloc:
+            raise ValueError("Plugin URL must include a host.")
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
