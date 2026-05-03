@@ -8,7 +8,7 @@ import uuid
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
-ALLOWED_LOGO_EXTENSIONS = frozenset({"png", "jpg", "jpeg", "webp", "gif", "svg"})
+ALLOWED_LOGO_EXTENSIONS = frozenset({"png", "jpg", "jpeg", "webp", "gif"})
 
 
 def save_business_logo(logo_file: FileStorage | None, static_folder: str | Path) -> str | None:
