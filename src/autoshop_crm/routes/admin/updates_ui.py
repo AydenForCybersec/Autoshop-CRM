@@ -29,7 +29,7 @@ def _get_update_manager() -> UpdateManager:
 
 def _is_local_request() -> bool:
     import ipaddress
-    raw = (request.headers.get("X-Forwarded-For", request.remote_addr) or "").split(",")[0].strip()
+    raw = request.remote_addr or ""
     if raw in {"127.0.0.1", "::1", "localhost"}:
         return True
     try:
