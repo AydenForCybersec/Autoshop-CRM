@@ -95,7 +95,10 @@ def updates_rollback() -> ResponseReturnValue:
     confirm = request.form.get("confirm_text", "").strip()
     if confirm != current_app.config["UPDATE_CONFIRM_PHRASE"]:
         return {"ok": False, "error": "Incorrect confirmation phrase."}
-    steps = int(request.form.get("steps", "1"))
+    try:
+        steps = int(request.form.get("steps", "1"))
+    except (ValueError, TypeError):
+        return {"ok": False, "error": "Invalid steps value."}
     manager = _get_update_manager()
     try:
         result = manager.rollback(steps=steps)
