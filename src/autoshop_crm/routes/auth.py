@@ -44,7 +44,7 @@ def login_view() -> ResponseReturnValue:
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
-        client_ip = (request.headers.get("X-Forwarded-For", request.remote_addr) or "unknown").split(",")[0].strip()
+        client_ip = request.remote_addr or "unknown"
 
         retry_after = get_retry_after_seconds(
             username=username,
