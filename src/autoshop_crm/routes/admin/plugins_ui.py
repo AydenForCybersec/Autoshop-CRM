@@ -71,11 +71,15 @@ def plugin_uninstall(plugin_id: str) -> ResponseReturnValue:
 @admin_bp.route("/plugins/install-url", methods=["POST"])
 @require_permission("access_admin_panel")
 def plugin_install_url() -> ResponseReturnValue:
+    from urllib.parse import urlparse
     from autoshop_crm.plugins.manager import plugin_manager
     url = request.form.get("url", "").strip()
     plugin_path = request.form.get("plugin_path", "").strip() or None
     if not url:
         flash("URL is required.")
+        return redirect(url_for("admin.plugins"))
+    if urlparse(url).scheme != "https":
+        flash("Plugin URL must use HTTPS.")
         return redirect(url_for("admin.plugins"))
     try:
         plugin_id = plugin_manager.install_from_url(url, plugin_path)
