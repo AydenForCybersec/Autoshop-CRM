@@ -114,6 +114,7 @@
                                         <li class="entity-item part-item">
                                             <form method="post" action="{{ url_for('jobs.edit_part', part_id=part.id) }}" class="part-edit-form">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="job_id" value="{{ job.id }}">
                                                 <div class="part-edit-row">
                                                     <label class="field">
                                                         <span>Name</span>
@@ -146,6 +147,7 @@
                                             </form>
                                             <form method="post" action="{{ url_for('jobs.delete_part', part_id=part.id) }}" onsubmit="return confirm('Remove this part?');">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="job_id" value="{{ job.id }}">
                                                 <button type="submit" class="btn btn-danger">Delete</button>
                                             </form>
                                         </li>
@@ -194,6 +196,7 @@
                                         <li class="entity-item part-item">
                                             <form method="post" action="{{ url_for('jobs.edit_labor', labor_id=entry.id) }}" class="part-edit-form">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="job_id" value="{{ job.id }}">
                                                 <div class="part-edit-row">
                                                     <label class="field">
                                                         <span>Mechanic</span>
@@ -225,6 +228,7 @@
                                             </form>
                                             <form method="post" action="{{ url_for('jobs.delete_labor', labor_id=entry.id) }}" onsubmit="return confirm('Remove this labor entry?');">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="job_id" value="{{ job.id }}">
                                                 <button type="submit" class="btn btn-danger">Delete</button>
                                             </form>
                                         </li>

@@ -322,6 +322,9 @@ def edit_part(part_id: int) -> ResponseReturnValue:
     from datetime import date as date_type
     part = JobPart.query.get_or_404(part_id)
     job = get_job(part.job_id)
+    if request.form.get("job_id", type=int) != job.id:
+        flash("Invalid request.", "error")
+        return redirect(url_for("customers.list_customers"))
 
     part_name = request.form.get("part_name", "").strip()
     if not part_name:
@@ -375,7 +378,11 @@ def delete_part(part_id: int) -> ResponseReturnValue:
     from ..models.job import JobPart
     from ..extensions import db
     part = JobPart.query.get_or_404(part_id)
-    vehicle_id = get_job(part.job_id).vehicle_id
+    job = get_job(part.job_id)
+    if request.form.get("job_id", type=int) != job.id:
+        flash("Invalid request.", "error")
+        return redirect(url_for("customers.list_customers"))
+    vehicle_id = job.vehicle_id
     db.session.delete(part)
     db.session.commit()
     flash("Part removed.", "success")
@@ -390,6 +397,9 @@ def edit_labor(labor_id: int) -> ResponseReturnValue:
     from ..extensions import db
     entry = JobLabor.query.get_or_404(labor_id)
     job = get_job(entry.job_id)
+    if request.form.get("job_id", type=int) != job.id:
+        flash("Invalid request.", "error")
+        return redirect(url_for("customers.list_customers"))
 
     hours_raw = request.form.get("hours", "").strip()
     try:
@@ -426,7 +436,11 @@ def delete_labor(labor_id: int) -> ResponseReturnValue:
     from ..models.job import JobLabor
     from ..extensions import db
     entry = JobLabor.query.get_or_404(labor_id)
-    vehicle_id = get_job(entry.job_id).vehicle_id
+    job = get_job(entry.job_id)
+    if request.form.get("job_id", type=int) != job.id:
+        flash("Invalid request.", "error")
+        return redirect(url_for("customers.list_customers"))
+    vehicle_id = job.vehicle_id
     db.session.delete(entry)
     db.session.commit()
     flash("Labor entry removed.", "success")
